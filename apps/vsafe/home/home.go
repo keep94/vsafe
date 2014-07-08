@@ -3,7 +3,7 @@ package home
 import (
   "github.com/keep94/appcommon/http_util"
   "github.com/keep94/vsafe"
-  "github.com/keep94/vsafe/apps/common"
+  "github.com/keep94/vsafe/apps/vsafe/common"
   "github.com/keep94/vsafe/vsafedb"
   "html/template"
   "net/http"
