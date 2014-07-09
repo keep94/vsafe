@@ -6,6 +6,7 @@ import (
   "errors"
   "github.com/keep94/appcommon/db"
   "github.com/keep94/appcommon/etag"
+  "github.com/keep94/appcommon/str_util"
   "github.com/keep94/gofunctional3/consume"
   "github.com/keep94/gofunctional3/functional"
   "github.com/keep94/vsafe"
@@ -214,26 +215,26 @@ func ChangePassword(
 type entryFilter string
 
 func newEntryFilter(s string) functional.Filterer {
-  s = strings.TrimSpace(s)
+  s = str_util.Normalize(s)
   if s == "" {
     return functional.All()
   }
-  return entryFilter(strings.ToLower(s))
+  return entryFilter(s)
 }
 
 func (f entryFilter) Filter(ptr interface{}) error {
   p := ptr.(*vsafe.Entry)
   pattern := string(f)
   if p.Url != nil {
-    str := strings.ToLower(p.Url.String())
+    str := str_util.Normalize(p.Url.String())
     if strings.Index(str, pattern) != -1 {
       return nil
     }
   }
-  if strings.Index(strings.ToLower(p.Title), pattern) != -1 {
+  if strings.Index(str_util.Normalize(p.Title), pattern) != -1 {
     return nil
   }
-  if strings.Index(strings.ToLower(p.Desc), pattern) != -1 {
+  if strings.Index(str_util.Normalize(p.Desc), pattern) != -1 {
     return nil
   }
   return functional.Skipped
