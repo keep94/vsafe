@@ -2,14 +2,17 @@ package main
 
 import (
   "code.google.com/p/gosqlite/sqlite"
+  "errors"
   "flag"
   "fmt"
   "github.com/gorilla/context"
+  "github.com/gorilla/sessions"
   "github.com/keep94/appcommon/db"
   "github.com/keep94/appcommon/db/sqlite_db"
   "github.com/keep94/appcommon/http_util"
   "github.com/keep94/appcommon/logging"
   "github.com/keep94/ramstore"
+  "github.com/keep94/vsafe"
   "github.com/keep94/vsafe/apps/vsafe/common"
   "github.com/keep94/vsafe/apps/vsafe/chpasswd"
   "github.com/keep94/vsafe/apps/vsafe/home"
@@ -20,6 +23,7 @@ import (
   "github.com/keep94/vsafe/vsafedb/for_sqlite"
   "github.com/keep94/weblogs"
   "net/http"
+  "strconv"
 )
 
 const (
@@ -33,9 +37,14 @@ var (
 )
 
 var (
+  errNotLoggedIn = errors.New("vsafe app: not logged in.")
+)
+
+var (
   kDoer db.Doer
   kStore for_sqlite.Store
   kSessionStore = ramstore.NewRAMStore(kSessionTimeout)
+  kPollingStore = asPollingStore(kSessionStore)
 )
 
 func main() {
@@ -60,6 +69,8 @@ func main() {
       "/auth/login",
       &login.Handler{SessionStore: kSessionStore, Store: kStore})
   http.Handle(
+      "/auth/poll", pollHandler{})
+  http.Handle(
       "/vsafe/", &authHandler{mux})
   mux.Handle("/vsafe/chpasswd", &chpasswd.Handler{Store: kStore, Doer: kDoer})
   mux.Handle("/vsafe/home", &home.Handler{Store: kStore})
@@ -79,21 +90,56 @@ type authHandler struct {
 }
 
 func (h *authHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-  session, err := common.NewUserSession(kStore, kSessionStore, r)
-  if err != nil {
-    http_util.ReportError(w, "Error reading database.", err)
-    return
-  }
-  key := session.Key()
-  if session.User == nil || key == nil || key.Id != session.User.GetOwner() {
+  user, _, err := authorizeSession(r, kSessionStore)
+  if err == errNotLoggedIn {
     http_util.Redirect(
         w,
         r,
         http_util.NewUrl("/auth/login", "prev", r.URL.String()).String())
     return
   }
-  logging.SetUserName(r, session.User.Name)
+  if err != nil {
+    http_util.ReportError(w, "Error reading database.", err)
+    return
+  }
+  logging.SetUserName(r, user.Name)
   h.ServeMux.ServeHTTP(w, r)
+}
+
+type pollHandler struct {
+}
+
+func (h pollHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+  r.ParseForm()
+  keyId, _ := strconv.ParseInt(r.Form.Get("kid"), 64, 10)
+  _, key, err := authorizeSession(r, kPollingStore)
+  if err == errNotLoggedIn {
+    http_util.Error(w, 401)
+    return
+  }
+  if err != nil {
+    http_util.ReportError(w, "Error reading database.", err)
+    return
+  }
+  if keyId != key.Id {
+    http_util.Error(w, 401)
+    return
+  }
+  return
+}
+
+func authorizeSession(
+    r *http.Request,
+    sessionStore sessions.Store) (*vsafe.User, *vsafe.Key, error) {
+  session, err := common.NewUserSession(kStore, sessionStore, r)
+  if err != nil {
+    return nil, nil, err
+  }
+  key := session.Key()
+  if session.User == nil || key == nil || key.Id != session.User.GetOwner() {
+    return nil, nil, errNotLoggedIn
+  }
+  return session.User, key, nil
 }
 
 // TODO
@@ -119,5 +165,12 @@ func setupDb(filepath string) {
   dbase := sqlite_db.New(conn)
   kDoer = sqlite_db.NewDoer(dbase)
   kStore = for_sqlite.New(dbase)
+}
+
+func asPollingStore(store *ramstore.RAMStore) *ramstore.RAMStore {
+  result := *store
+  result.SData = result.Data.AsPoller()
+  result.Data = nil
+  return &result
 }
 
