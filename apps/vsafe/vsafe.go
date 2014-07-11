@@ -121,7 +121,7 @@ type pollHandler struct {
 func (h pollHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
   r.ParseForm()
   keyId, _ := strconv.ParseInt(r.Form.Get("kid"), 10, 64)
-  _, key, err := authorizeSession(r, kPollingStore)
+  user, key, err := authorizeSession(r, kPollingStore)
   if err == errNotLoggedIn {
     http_util.Error(w, 401)
     return
@@ -130,6 +130,7 @@ func (h pollHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     http_util.ReportError(w, "Error reading database.", err)
     return
   }
+  logging.SetUserName(r, user.Name)
   if keyId != key.Id {
     http_util.Error(w, 401)
     return
