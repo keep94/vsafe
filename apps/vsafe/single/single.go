@@ -1,6 +1,7 @@
 package single
 
 import (
+  "errors"
   "fmt"
   "github.com/keep94/appcommon/db"
   "github.com/keep94/appcommon/etag"
@@ -126,6 +127,9 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
         _, err = vsafedb.AddEntry(h.Store, session.Key(), &entry)
       }
     }
+  }
+  if err == vsafedb.ErrConcurrentModification {
+    err = errors.New("Someone else updated this entry after you started. Click cancel and try again.")
   }
   if err != nil {
     http_util.WriteTemplate(
