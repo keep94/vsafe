@@ -17,6 +17,7 @@ kTemplateSpec = `
 <head>
   <title>Vsafe using Go for {{.Name}}</title>
   <link rel="stylesheet" type="text/css" href="/static/theme.css" />
+  <link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon" />
 </head>
 <body>
 <h2>Vsafe using Go for {{.Name}}</h2>

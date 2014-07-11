@@ -15,6 +15,7 @@ var (
 <html>
 <head>
   <link rel="stylesheet" type="text/css" href="/static/theme.css" />
+  <link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon" />
 </head>
 <body>
 <h2>Login</h2>

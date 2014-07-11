@@ -31,6 +31,8 @@ const (
 )
 
 var (
+  fSSLCrt string
+  fSSLKey string
   fPort string
   fDb string
   fIcon string
@@ -80,6 +82,13 @@ func main() {
       weblogs.HandlerWithOptions(
           http.DefaultServeMux,
           &weblogs.Options{Logger: logging.ApacheCommonLoggerWithLatency()}))
+  if fSSLCrt != "" && fSSLKey != "" {
+    if err := http.ListenAndServeTLS(
+        fPort, fSSLCrt, fSSLKey, defaultHandler); err != nil {
+      fmt.Println(err)
+    }
+    return
+  }
   if err := http.ListenAndServe(fPort, defaultHandler); err != nil {
     fmt.Println(err)
   }
@@ -152,6 +161,8 @@ func rootRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func init() {
+  flag.StringVar(&fSSLCrt, "ssl_crt", "", "SSL Certificate file")
+  flag.StringVar(&fSSLKey, "ssl_key", "", "SSL Key file")
   flag.StringVar(&fPort, "http", ":8080", "Port to bind")
   flag.StringVar(&fDb, "db", "", "Path to database file")
   flag.StringVar(&fIcon, "icon", "", "Path to icon file")

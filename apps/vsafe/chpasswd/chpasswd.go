@@ -20,18 +20,20 @@ var (
 <html>
 <head>
   <link rel="stylesheet" type="text/css" href="/static/theme.css" />
+  <link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon" />
 </head>
 <body>
 <h2>Changing password for {{.Name}}</h2>
+<a href="/vsafe/home">Back</a>
+<br><br>
 {{if .Message}}
   {{if .Success}}
     <font color="#006600"><b>{{.Message}}</b></font>
   {{else}}
     <span class="error">{{.Message}}</span>
   {{end}}
+  <br>
 {{end}}
-<a href="/vsafe/home">Back</a>
-<br><br>
 <form method="post">
   <table>
     <tr>

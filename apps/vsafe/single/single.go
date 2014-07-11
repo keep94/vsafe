@@ -21,6 +21,7 @@ kTemplateSpec = `
 <html>
 <head>
   <link rel="stylesheet" type="text/css" href="/static/theme.css">
+  <link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon" />
   <script type="text/javascript" src="/static/vsafe.js"></script>
 </head>
 <body>
