@@ -39,11 +39,10 @@ func CreateUserSession(s *sessions.Session) *UserSession {
   }
 }
 
-// NewUserSession creates a UserSession instance populating the User field
-// with the current logged in user or leaving the User field nil if no user
-// is logged in. On successful completion, it associates the returned session
-// with the current request, r. When this call completes successfully, caller
-// must call context.Clear(r) from the github.com/gorilla/context package.
+// NewUserSession creates a UserSession and associates it with the request
+// instance. If user not logged in, the User field in returned UserSession
+// is nil. Caller must call  must call context.Clear(r) from the
+// github.com/gorilla/context package.
 // It is up to the caller to ensure that the Id of the key in the returned
 // session matches the result of GetOwner() on the user instance in the same
 // session.
