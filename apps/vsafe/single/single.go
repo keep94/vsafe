@@ -20,6 +20,7 @@ kTemplateSpec = `
 <html>
 <head>
   <link rel="stylesheet" type="text/css" href="/static/theme.css">
+  <script type="text/javascript" src="/static/vsafe.js"></script>
 </head>
 <body>
 {{if .Error}}
@@ -67,6 +68,10 @@ kTemplateSpec = `
    </tr>
  </table>
 </form>
+<script type="text/javascript">
+  var autoLogout = new AutoLogout("/auth/poll?kid={{.KeyId}}", "/auth/login", 60000);
+  autoLogout.start();
+</script>
 </body>
 </html>`
 )
@@ -126,10 +131,11 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
     http_util.WriteTemplate(
         w,
         kTemplate,
-        &view{
-            Values: http_util.Values{r.Form},
-            Error: err,
-            ExistingEntry: isIdValid(id)})
+        newView(
+            r.Form,
+            isIdValid(id),
+            session.Key().Id,
+            err))
   } else {
     http_util.Redirect(w, r, r.Form.Get("prev"))
   }
@@ -151,13 +157,22 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
     http_util.WriteTemplate(
         w,
         kTemplate,
-        &view{Values: http_util.Values{fromEntry(&entry)}, ExistingEntry: true})
-        
+        newView(
+            fromEntry(&entry),
+            true,
+            session.Key().Id,
+            nil))
   } else {
+    initValues := make(url.Values)
+    initValues.Set("url", "http://")
     http_util.WriteTemplate(
         w,
         kTemplate,
-        &view{Values: http_util.Values{nil}, ExistingEntry: false})
+        newView(
+            initValues,
+            false,
+            session.Key().Id,
+            nil))
   }
 }
 
@@ -209,6 +224,19 @@ type view struct {
   http_util.Values
   Error error
   ExistingEntry bool
+  KeyId int64
+}
+
+func newView(
+    values url.Values,
+    existingEntry bool,
+    keyId int64,
+    err error) *view {
+  return &view{
+      Values: http_util.Values{values},
+      ExistingEntry: existingEntry,
+      KeyId: keyId,
+      Error: err}
 }
 
 func isIdValid(id int64) bool {
