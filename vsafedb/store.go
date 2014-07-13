@@ -10,6 +10,7 @@ import (
   "github.com/keep94/gofunctional3/consume"
   "github.com/keep94/gofunctional3/functional"
   "github.com/keep94/vsafe"
+  "sort"
   "strings"
 )
 
@@ -67,7 +68,7 @@ type EntryByIdRunner interface {
 
 type EntriesByOwnerRunner interface {
   // EntriesByOwner retrieves all entries with a particular owner from
-  // persistent storage ordered by title.
+  // persistent storage ordered by Id.
   EntriesByOwner(t db.Transaction, owner int64, consumer functional.Consumer) error
 }
 
@@ -169,22 +170,23 @@ func EntryById(
   return nil
 }
 
-// Entries fetches entries from persistent storage that can be decrypted
-// with key and orders them by title. It does not use key to decrypt the
-// sensitive fields within the fetched entries.
+// Entries fetches entries from persistent storage matching keyId and orders
+// them by title ignoring case. It does not decrypt the sensitive fields
+// within the fetched entries.
 func Entries(
     store EntriesByOwnerRunner,
-    key *vsafe.Key,
+    keyId int64,
     query string) ([]*vsafe.Entry, error) {
   var results []*vsafe.Entry
   if err := store.EntriesByOwner(
       nil,
-      key.Id,
+      keyId,
       functional.FilterConsumer(
           consume.AppendPtrsTo(&results, nil),
           newEntryFilter(query))); err != nil {
     return nil, err
   }
+  sort.Sort(newSortByTitle(results))
   return results, nil
 }
 
@@ -239,3 +241,31 @@ func (f entryFilter) Filter(ptr interface{}) error {
   }
   return functional.Skipped
 }
+
+type sortByTitle struct {
+  entries []*vsafe.Entry
+  trimmedLowerTitles []string
+}
+
+func newSortByTitle(entries []*vsafe.Entry) sort.Interface {
+  titles := make([]string, len(entries))
+  for i := range entries {
+    titles[i] = strings.TrimSpace(strings.ToLower(entries[i].Title))
+  }
+  return &sortByTitle{entries: entries, trimmedLowerTitles: titles}
+}
+
+func (s *sortByTitle) Len() int {
+  return len(s.entries)
+}
+
+func (s *sortByTitle) Less(i, j int) bool {
+  return s.trimmedLowerTitles[i] < s.trimmedLowerTitles[j]
+}
+
+func (s *sortByTitle) Swap(i, j int) {
+  s.entries[i], s.entries[j] = s.entries[j], s.entries[i]
+  s.trimmedLowerTitles[i], s.trimmedLowerTitles[j] =
+      s.trimmedLowerTitles[j], s.trimmedLowerTitles[i]
+}
+

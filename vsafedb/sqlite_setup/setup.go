@@ -19,9 +19,5 @@ func SetUpTables(conn *sqlite.Conn) error {
   if err != nil {
     return err
   }
-  err = conn.Exec("create index if not exists entry_title_idx on entry (title)")
-  if err != nil {
-    return err
-  }
   return nil
 }

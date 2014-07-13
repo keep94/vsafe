@@ -225,8 +225,8 @@ func EntriesByOwner(t *testing.T, store EntriesByOwnerStore) {
   if len(entries) != 2 {
     t.Fatalf("Expected 2 entries back, got %d", len(entries))
   }
-  assertEntryEqual(t, &second, entries[0])
-  assertEntryEqual(t, &first, entries[1])
+  assertEntryEqual(t, &first, entries[0])
+  assertEntryEqual(t, &second, entries[1])
 }
 
 func UpdateEntry(t *testing.T, store UpdateEntryStore) {

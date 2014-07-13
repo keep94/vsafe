@@ -72,7 +72,7 @@ type Handler struct {
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
   r.ParseForm()
   session := common.GetUserSession(r)
-  entries, err := vsafedb.Entries(h.Store, session.Key(), r.Form.Get("q"))
+  entries, err := vsafedb.Entries(h.Store, session.Key().Id, r.Form.Get("q"))
   if err != nil {
     http_util.ReportError(w, "Error reading database", err)
     return

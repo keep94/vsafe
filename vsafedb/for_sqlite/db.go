@@ -20,7 +20,7 @@ const (
   kSQLUpdateUser = "update user set owner = ?, name = ?, key = ?, checksum = ? where id = ?"
   kSQLRemoveUser = "delete from user where name = ?"
   kSQLEntryById = "select id, owner, url, title, desc, uname, password, special from entry where id = ?"
-  kSQLEntryByOwner = "select id, owner, url, title, desc, uname, password, special from entry where owner = ? order by title"
+  kSQLEntryByOwner = "select id, owner, url, title, desc, uname, password, special from entry where owner = ? order by id"
   kSQLAddEntry = "insert into entry (owner, url, title, desc, uname, password, special) values (?, ?, ?, ?, ?, ?, ?)"
   kSQLUpdateEntry = "update entry set owner = ?, url = ?, title = ?, desc = ?, uname = ?, password = ?, special = ? where id = ?"
   kSQLRemoveEntry = "delete from entry where id = ? and owner = ?"
