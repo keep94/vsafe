@@ -92,13 +92,14 @@ type RemoveEntryRunner interface {
 // are encrypted in persistent storage.
 func AddEntry(
     store AddEntryRunner,
+    t db.Transaction,
     key *vsafe.Key,
     entry *vsafe.Entry) (newId int64, err error) {
   encrypted := *entry
   if err = encrypted.Encrypt(key); err != nil {
     return
   }
-  if err = store.AddEntry(nil, &encrypted); err != nil {
+  if err = store.AddEntry(t, &encrypted); err != nil {
     return
   }
   return encrypted.Id, nil

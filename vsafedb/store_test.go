@@ -31,7 +31,7 @@ func TestAddEntry(t *testing.T) {
   entry := *kAnEntry
   var id int64
   var err error
-  if id, err = vsafedb.AddEntry(&store, kKey, &entry); err != nil {
+  if id, err = vsafedb.AddEntry(&store, nil, kKey, &entry); err != nil {
     t.Fatalf("Error adding tostore: %v", err)
   }
   if id != 1 {
@@ -96,7 +96,7 @@ func TestUpdateEntry(t *testing.T) {
 func TestUpdateEntryWithEtag(t *testing.T) {
   origEntry := *kOrigEntry
   var store FakeStore
-  newId, err := vsafedb.AddEntry(&store, kKey, &origEntry)
+  newId, err := vsafedb.AddEntry(&store, nil, kKey, &origEntry)
   if err != nil {
     t.Fatalf("Error saving original entry %v", err)
   }
@@ -127,7 +127,7 @@ func TestUpdateEntryWithEtag(t *testing.T) {
 func TestUpdateEntryConcurrent(t *testing.T) {
   origEntry := *kOrigEntry
   var store FakeStore
-  newId, err := vsafedb.AddEntry(&store, kKey, &origEntry)
+  newId, err := vsafedb.AddEntry(&store, nil, kKey, &origEntry)
   if err != nil {
     t.Fatalf("Error saving original entry %v", err)
   }
@@ -161,7 +161,7 @@ func TestUpdateEntryConcurrent(t *testing.T) {
 func TestUpdateEntryWithEtagBadKey(t *testing.T) {
   origEntry := *kOrigEntry
   var store FakeStore
-  newId, err := vsafedb.AddEntry(&store, kKey, &origEntry)
+  newId, err := vsafedb.AddEntry(&store, nil, kKey, &origEntry)
   if err != nil {
     t.Fatalf("Error saving original entry %v", err)
   }
@@ -197,7 +197,7 @@ func TestUpdateEntryWithEtagBadKey(t *testing.T) {
 func TestEntryByIdKeyMismatch(t *testing.T) {
   var store FakeStore
   entry := *kAnEntry
-  vsafedb.AddEntry(&store, kKey, &entry)
+  vsafedb.AddEntry(&store, nil, kKey, &entry)
   var readEntry vsafe.Entry
   badKey := *kKey
   badKey.Id++
@@ -214,9 +214,9 @@ func TestEntries(t *testing.T) {
   entry1 := vsafe.Entry{Title: " First", Url: yahoo, Desc: "the SeconD   oNe"}
   entry2 := vsafe.Entry{Title: "aGAiN  sEcond", Url: google, Desc: "a desc"}
   entry3 := vsafe.Entry{Title: "third again", Desc: "foo bar"}
-  vsafedb.AddEntry(&store, kKey, &entry1)
-  vsafedb.AddEntry(&store, kKey, &entry2)
-  vsafedb.AddEntry(&store, kKey, &entry3)
+  vsafedb.AddEntry(&store, nil, kKey, &entry1)
+  vsafedb.AddEntry(&store, nil, kKey, &entry2)
+  vsafedb.AddEntry(&store, nil, kKey, &entry3)
   entries, err := vsafedb.Entries(store, kKey.Id, "")
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)

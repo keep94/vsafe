@@ -126,7 +126,7 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
               h.Store, t, uint32(tag), session.Key(), &entry)
         })
       } else {
-        _, err = vsafedb.AddEntry(h.Store, session.Key(), &entry)
+        _, err = vsafedb.AddEntry(h.Store, nil, session.Key(), &entry)
       }
     }
   }
