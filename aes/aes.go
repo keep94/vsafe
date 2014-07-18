@@ -6,8 +6,12 @@ import (
   "crypto/aes"
   "crypto/cipher"
   "encoding/base64"
+  "errors"
   "github.com/keep94/appcommon/kdf"
-  "strings"
+)
+
+var (
+  errNoPKCS7 = errors.New("no PKCS7 padding")
 )
 
 // EncryptB encrypts plain with key and returns a base64 encoded string.
@@ -26,11 +30,7 @@ func EncryptB(plain, key []byte) (string, error) {
 
 // Encrypt encrypts plain with key and returns a base64 encoded string.
 func Encrypt(plain string, key []byte) (string, error) {
-  remainder := len(plain) % aes.BlockSize
-  if remainder > 0 {
-    plain += strings.Repeat("\u0000", aes.BlockSize - remainder)
-  }
-  return EncryptB([]byte(plain), key)
+  return EncryptB(PKCS7([]byte(plain)), key)
 }
 
 // DecryptB decrypts encoded using key. encoded is a base64 encoded string
@@ -58,10 +58,47 @@ func Decrypt(encoded string, key []byte) (string, error) {
   if err != nil {
     return "", err
   }
-  result := string(plainb)
-  index := strings.Index(result, "\u0000")
-  if index == -1 {
-    return result, nil
+  plainb, err = UnPKCS7(plainb)
+  if err != nil {
+    return "", err
   }
-  return result[:index], nil
+  return string(plainb), nil
 }
+
+// PKCS7 returns a new slice that contains data along with PKCS7 padding.
+// Returned slice is suitable for aes encryption.
+func PKCS7(data []byte) []byte {
+  blockSize := aes.BlockSize
+  datalen := len(data)
+  padSize := blockSize - datalen % blockSize
+  result := make([]byte, datalen + padSize)
+  idx := copy(result, data)
+  padding := result[idx:]
+  for i := range padding {
+    padding[i] = byte(padSize)
+  }
+  return result
+}
+
+// UnPKCS7 returns a view of data without the PKCS7 padding. UnPKCS7
+// returns an error if data is not PKCS7 padded.
+func UnPKCS7(data []byte) ([]byte, error) {
+  blockSize := aes.BlockSize
+  datalen := len(data)
+  if datalen % blockSize != 0 {
+    return nil, errNoPKCS7
+  }
+  padbyte := data[datalen - 1]
+  padSize := int(padbyte)
+  if padSize > blockSize {
+    return nil, errNoPKCS7
+  }
+  padding := data[datalen - padSize:]
+  for i := range padding {
+    if padding[i] != padbyte {
+       return nil, errNoPKCS7
+    }
+  }
+  return data[:datalen - padSize], nil
+}
+

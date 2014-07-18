@@ -37,10 +37,7 @@ func TestEncryptSecurity(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  decoded, err := aes.Decrypt(encoded, anotherKey)
-  if err != nil {
-    t.Fatal(err)
-  }
+  decoded, _ := aes.Decrypt(encoded, anotherKey)
   if decoded == "aardvark" {
     t.Error("Expected different decryption with different key")
   }
