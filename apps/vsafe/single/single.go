@@ -126,7 +126,11 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
               h.Store, t, uint32(tag), session.Key(), &entry)
         })
       } else {
-        _, err = vsafedb.AddEntry(h.Store, nil, session.Key(), &entry)
+        var newId int64
+        newId, err = vsafedb.AddEntry(h.Store, nil, session.Key(), &entry)
+        if err == nil {
+          id = newId
+        }
       }
     }
   }
@@ -143,7 +147,13 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
             session.Key().Id,
             err))
   } else {
-    http_util.Redirect(w, r, r.Form.Get("prev"))
+    var u *url.URL
+    u, err = url.Parse(r.Form.Get("prev"))
+    if err != nil {
+      http_util.ReportError(w, "Error parsing prev url", err)
+      return
+    }
+    http_util.Redirect(w, r, withId(u, id).String())
   }
 }
 
@@ -180,6 +190,13 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
             session.Key().Id,
             nil))
   }
+}
+
+func withId(url *url.URL, id int64) *url.URL {
+  idStr := strconv.FormatInt(id, 10)
+  result := *http_util.WithParams(url, "id", idStr)
+  result.Fragment = idStr
+  return &result
 }
 
 func toEntry(values url.Values, entry *vsafe.Entry) error {

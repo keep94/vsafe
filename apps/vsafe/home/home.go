@@ -11,6 +11,10 @@ import (
   "strconv"
 )
 
+const (
+  kRowsAtTop = 3
+)
+
 var (
 kTemplateSpec = `
 <html>
@@ -54,9 +58,16 @@ kTemplateSpec = `
     </td>
   </tr>
  {{with $top := .}}
- {{range .Entries}}
-  <tr class="lineitem">
-    <td><a href="{{if .Url}}{{.Url}}{{end}}" target="_blank">{{.Title}}</a></td>
+ {{range $idx, $element := .Entries}}
+  {{if $top.IsCurrent .Id}}
+    <tr bgcolor="#CCCC00">
+  {{else}}
+    <tr class="lineitem">
+  {{end}}
+    <td>
+      {{if $top.HasAnchor $idx}}<a name="{{$top.Anchor $idx}}" />{{end}}
+      <a href="{{if .Url}}{{.Url}}{{end}}" target="_blank">{{.Title}}</a>
+    </td>
     <td><a href="{{$top.EntryLink .Id}}">View</a></td>
   </tr>
   <tr>
@@ -85,6 +96,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
   r.ParseForm()
   session := common.GetUserSession(r)
   sortBy := r.Form.Get("sort")
+  id, _ := strconv.ParseInt(r.Form.Get("id"), 10, 64)
   entries, err := vsafedb.Entries(h.Store, session.Key().Id, r.Form.Get("q"))
   if err != nil {
     http_util.ReportError(w, "Error reading database", err)
@@ -103,7 +115,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
           Values: http_util.Values{r.Form},
           Name: session.User.Name,
           Entries: entries,
-          Url: r.URL})
+          Url: r.URL,
+          Id: id})
 }
 
 type view struct {
@@ -111,6 +124,15 @@ type view struct {
   Name string
   Entries []*vsafe.Entry
   Url *url.URL
+  Id int64
+}
+
+func (v *view) HasAnchor(idx int) bool {
+  return idx + kRowsAtTop < len(v.Entries)
+}
+
+func (v *view) Anchor(idx int) int64 {
+  return v.Entries[idx + kRowsAtTop].Id
 }
 
 func (v *view) EntryLink(id int64) *url.URL {
@@ -123,7 +145,12 @@ func (v *view) EntryLink(id int64) *url.URL {
 func (v *view) SortBy(sortBy string) *url.URL {
   return http_util.WithParams(
        v.Url,
-       "sort", sortBy)
+       "sort", sortBy,
+       "id", "0")
+}
+
+func (v *view) IsCurrent(id int64) bool {
+  return id == v.Id
 }
 
 func init() {
