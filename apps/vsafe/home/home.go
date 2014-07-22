@@ -38,8 +38,20 @@ kTemplateSpec = `
 <br/>
 <table>
   <tr>
-    <td>Title</td>
-    <td>Password</td>
+    <td>
+      {{if .Equals "sort" ""}}
+        Title
+      {{else}}
+        <a href="{{.SortBy ""}}">Title</a>
+      {{end}}
+    </td>
+    <td>
+      {{if .Equals "sort" "newest"}}
+        Newest First
+      {{else}}
+        <a href="{{.SortBy "newest"}}">Newest First</a>
+      {{end}}
+    </td>
   </tr>
  {{with $top := .}}
  {{range .Entries}}
@@ -72,10 +84,17 @@ type Handler struct {
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
   r.ParseForm()
   session := common.GetUserSession(r)
+  sortBy := r.Form.Get("sort")
   entries, err := vsafedb.Entries(h.Store, session.Key().Id, r.Form.Get("q"))
   if err != nil {
     http_util.ReportError(w, "Error reading database", err)
     return
+  }
+  switch sortBy {
+    case "newest":
+      vsafedb.Reverse(entries)
+    default:
+      vsafedb.SortByTitle(entries)
   }
   http_util.WriteTemplate(
       w,
@@ -99,6 +118,12 @@ func (v *view) EntryLink(id int64) *url.URL {
       "/vsafe/single",
       "id", strconv.FormatInt(id, 10),
       "prev", v.Url.String())
+}
+
+func (v *view) SortBy(sortBy string) *url.URL {
+  return http_util.WithParams(
+       v.Url,
+       "sort", sortBy)
 }
 
 func init() {

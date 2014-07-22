@@ -224,7 +224,7 @@ func TestEntries(t *testing.T) {
   if len(entries) != 3 {
     t.Errorf("Expected 3 entries, got %v", len(entries))
   }
-  if entries[0].Title != entry2.Title || entries[1].Title != entry1.Title || entries[2].Title != entry3.Title {
+  if entries[0].Title != entry1.Title || entries[1].Title != entry2.Title || entries[2].Title != entry3.Title {
     t.Error("Returned 3 entries in wrong order")
   }
   entries, err = vsafedb.Entries(store, kKey.Id, "  first")
@@ -275,6 +275,49 @@ func TestEntries(t *testing.T) {
   }
   if len(entries) != 0 {
     t.Errorf("Expected 0 entries, got %v", len(entries))
+  }
+}
+
+func TestSortByTitle(t *testing.T) {
+  entry1 := vsafe.Entry{Title: " First"}
+  entry2 := vsafe.Entry{Title: "aGAiN  sEcond"}
+  entry3 := vsafe.Entry{Title: "   Third", Desc: "foo bar"}
+  entry4 := vsafe.Entry{Title: "fourth again", Desc: "foo bar"}
+  s := []*vsafe.Entry{&entry1, &entry2, &entry3, &entry4}
+  vsafedb.SortByTitle(s)
+  if s[0] != &entry2 || s[1] != &entry1 || s[2] != &entry4 || s[3] != &entry3 {
+    t.Error("Sort in wrong order.")
+  }
+}
+
+func TestSortByTitleEmpty(t *testing.T) {
+  var s []*vsafe.Entry
+  vsafedb.SortByTitle(s)
+}
+
+func TestReverse(t *testing.T) {
+  var entry1, entry2, entry3, entry4 vsafe.Entry
+  var s []*vsafe.Entry
+  vsafedb.Reverse(s)
+  s = []*vsafe.Entry{&entry1}
+  vsafedb.Reverse(s)
+  if s[0] != &entry1 {
+    t.Error("reverse with 1 entry wrong.")
+  }
+  s = []*vsafe.Entry{&entry1, &entry2}
+  vsafedb.Reverse(s)
+  if s[0] != &entry2 || s[1] != &entry1 {
+    t.Error("reverse with 2 entries wrong.")
+  }
+  s = []*vsafe.Entry{&entry1, &entry2, &entry3}
+  vsafedb.Reverse(s)
+  if s[0] != &entry3 || s[1] != &entry2 || s[2] != &entry1 {
+    t.Error("reverse with 3 entries wrong.")
+  }
+  s = []*vsafe.Entry{&entry1, &entry2, &entry3, &entry4}
+  vsafedb.Reverse(s)
+  if s[0] != &entry4 || s[1] != &entry3 || s[2] != &entry2 || s[3] != &entry1 {
+    t.Error("reverse with 4 entries wrong.")
   }
 }
 

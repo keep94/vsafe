@@ -171,9 +171,13 @@ func EntryById(
   return nil
 }
 
-// Entries fetches entries from persistent storage matching keyId and orders
-// them by title ignoring case. It does not decrypt the sensitive fields
-// within the fetched entries.
+// Entries returns a new slice containing entries encrypted with keyId and
+// matching query and orders them by Id. It does not decrypt the sensitive
+// fields within the fetched entries. query is searched for within url,
+// title, and description of each entry ignoring case to determine whether or
+// not there is a match. Whitespace within query and entry fields are
+// normalized to a single space before matching happens. The empty string
+// matches all entries.
 func Entries(
     store EntriesByOwnerRunner,
     keyId int64,
@@ -187,8 +191,23 @@ func Entries(
           newEntryFilter(query))); err != nil {
     return nil, err
   }
-  sort.Sort(newSortByTitle(results))
   return results, nil
+}
+
+// SortByTitle sorts entries by title in place ignoring case.
+func SortByTitle(entries []*vsafe.Entry) {
+  sort.Sort(newSortByTitle(entries))
+}
+
+// Reverse reverses entries in place.
+func Reverse(entries []*vsafe.Entry) {
+  start := 0
+  end := len(entries) - 1
+  for start < end {
+    entries[start], entries[end] = entries[end], entries[start]
+    start++
+    end--
+  }
 }
 
 // ChangePassword changes the password of a user in persistent storage.
