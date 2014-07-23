@@ -12,7 +12,7 @@ import (
 )
 
 const (
-  kRowsAtTop = 3
+  kRowsAtTop = 1
 )
 
 var (
