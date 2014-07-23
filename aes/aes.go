@@ -30,11 +30,13 @@ func EncryptB(plain, key []byte) (string, error) {
 
 // Encrypt encrypts plain with key and returns a base64 encoded string.
 func Encrypt(plain string, key []byte) (string, error) {
-  return EncryptB(PKCS7([]byte(plain)), key)
+  b := ([]byte)(plain)
+  PKCS7(&b)
+  return EncryptB(b, key)
 }
 
 // DecryptB decrypts encoded using key. encoded is a base64 encoded string
-// from EncryptB.
+// from EncryptB. Decrypt returns a new slice.
 func DecryptB(encoded string, key []byte) ([]byte, error) {
   encodedb, err := base64.StdEncoding.DecodeString(encoded)
   if err != nil {
@@ -58,47 +60,44 @@ func Decrypt(encoded string, key []byte) (string, error) {
   if err != nil {
     return "", err
   }
-  plainb, err = UnPKCS7(plainb)
+  err = UnPKCS7(&plainb)
   if err != nil {
     return "", err
   }
   return string(plainb), nil
 }
 
-// PKCS7 returns a new slice that contains data along with PKCS7 padding.
-// Returned slice is suitable for aes encryption.
-func PKCS7(data []byte) []byte {
+// PKCS7 adds PKCS7 padding to data in place for AES encryption.
+func PKCS7(data *[]byte) {
   blockSize := aes.BlockSize
-  datalen := len(data)
-  padSize := blockSize - datalen % blockSize
-  result := make([]byte, datalen + padSize)
-  idx := copy(result, data)
-  padding := result[idx:]
+  padSize := blockSize - len(*data) % blockSize
+  padding := make([]byte, padSize)
   for i := range padding {
     padding[i] = byte(padSize)
   }
-  return result
+  *data = append(*data, padding...)
 }
 
-// UnPKCS7 returns a view of data without the PKCS7 padding. UnPKCS7
+// UnPKCS7 removes PKCS7 padding for AES encryption from data in place and
 // returns an error if data is not PKCS7 padded.
-func UnPKCS7(data []byte) ([]byte, error) {
+func UnPKCS7(data *[]byte) error {
   blockSize := aes.BlockSize
-  datalen := len(data)
+  datalen := len(*data)
   if datalen % blockSize != 0 {
-    return nil, errNoPKCS7
+    return errNoPKCS7
   }
-  padbyte := data[datalen - 1]
+  padbyte := (*data)[datalen - 1]
   padSize := int(padbyte)
   if padSize > blockSize {
-    return nil, errNoPKCS7
+    return errNoPKCS7
   }
-  padding := data[datalen - padSize:]
+  padding := (*data)[datalen - padSize:]
   for i := range padding {
     if padding[i] != padbyte {
-       return nil, errNoPKCS7
+       return errNoPKCS7
     }
   }
-  return data[:datalen - padSize], nil
+  *data = (*data)[:datalen - padSize]
+  return nil
 }
 

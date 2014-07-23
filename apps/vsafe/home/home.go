@@ -29,7 +29,7 @@ kTemplateSpec = `
   <input type="text" name="q" value="{{.Get "q"}}" />
   <input type="submit" value="Search" />
 </form>
-<a href="{{.EntryLink 0}}">New Entry</a>
+<a href="{{.EntryLink 0}}" accesskey="n">New Entry (Ctrl+Alt+N)</a>
 &nbsp;
 &nbsp;
 <a href="/vsafe/chpasswd">Change password</a>
