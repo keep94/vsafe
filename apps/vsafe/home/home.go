@@ -25,7 +25,7 @@ kTemplateSpec = `
 </head>
 <body>
 <h2>Vsafe using Go for {{.Name}}</h2>
-<form>
+<form action="/vsafe/home">
   <input type="text" name="q" value="{{.Get "q"}}" />
   <input type="submit" value="Search" />
 </form>
