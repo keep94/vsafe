@@ -1,5 +1,5 @@
 // Package for_sqlite provides a sqlite implementation of interfaces in
-// huedb package.
+// vsafedb package.
 package for_sqlite
 
 import (
