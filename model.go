@@ -21,6 +21,7 @@ var (
 
 // Key instances are used to encrypt / decrypt user name, password, and
 // special fields in an entry.
+// These instances must be treated as immutable.
 type Key struct {
   Id int64
   Value []byte
