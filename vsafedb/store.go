@@ -5,7 +5,6 @@ package vsafedb
 import (
   "errors"
   "github.com/keep94/appcommon/db"
-  "github.com/keep94/appcommon/etag"
   "github.com/keep94/appcommon/str_util"
   "github.com/keep94/gofunctional3/consume"
   "github.com/keep94/gofunctional3/functional"
@@ -66,6 +65,13 @@ type EntryByIdRunner interface {
   EntryById(t db.Transaction, id int64, entry *vsafe.Entry) error
 }
 
+type EntryByIdWithEtagRunner interface {
+  // EntryByIdWithEtag retrieves an entry by id along with its etag
+  // from persistent storage.
+  EntryByIdWithEtag(
+      t db.Transaction, id int64, entry *vsafe.EntryWithEtag) error
+}
+
 type EntriesByOwnerRunner interface {
   // EntriesByOwner retrieves all entries with a particular owner from
   // persistent storage ordered by Id.
@@ -79,7 +85,7 @@ type UpdateEntryRunner interface {
 
 type SafeUpdateEntryRunner interface {
   UpdateEntryRunner
-  EntryByIdRunner
+  EntryByIdWithEtagRunner
 }
 
 type RemoveEntryRunner interface {
@@ -112,22 +118,30 @@ func AddEntry(
 func UpdateEntryWithEtag(
     store SafeUpdateEntryRunner,
     t db.Transaction,
-    tag uint32,
+    id int64,
+    tag uint64,
     key *vsafe.Key,
-    entry *vsafe.Entry) error {
+    update functional.Filterer) error {
   if t == nil {
     panic("Transaction must be non-nil")
   }
-  var origEntry vsafe.Entry
-  err := EntryById(store, t, entry.Id, key, &origEntry)
+  var origEntry vsafe.EntryWithEtag
+  err := EntryByIdWithEtag(store, t, id, key, &origEntry)
   if err != nil {
    return err
   }
-  origTag, err := etag.Etag32(&origEntry)
-  if tag != origTag {
+  err = update.Filter(&origEntry.Entry)
+  if err == functional.Skipped {
+    return nil
+  }
+  if err != nil {
+    return err
+  }
+  if tag != origEntry.Etag {
     return ErrConcurrentModification
   }
-  return UpdateEntry(store, t, key, entry)
+  origEntry.Id = id
+  return UpdateEntry(store, t, key, &origEntry.Entry)
 }
 
 // UpdateEntry updates an entry in persistent storage so that sensitive fields
@@ -162,13 +176,24 @@ func EntryById(
   if err = store.EntryById(t, id, entry); err != nil {
     return
   }
-  if err = entry.Decrypt(key); err != nil {
-    if err == vsafe.ErrKeyMismatch {
-      err = ErrNoSuchId
-    }
+  return decryptHelper(key, entry)
+}
+
+// EntryByIdWithEtag retrieves an entry by its id along with its etag
+// from persistent storage while handling decryption of sensitive fields.
+// If the Id of the provided key does not match the Owner field of
+// fetched entry, that is the current user does not own the entry
+// being fetched, EntryById returns ErrNoSuchId.
+func EntryByIdWithEtag(
+    store EntryByIdWithEtagRunner,
+    t db.Transaction,
+    id int64,
+    key *vsafe.Key,
+    entry *vsafe.EntryWithEtag) (err error) {
+  if err = store.EntryByIdWithEtag(t, id, entry); err != nil {
     return
   }
-  return nil
+  return decryptHelper(key, &entry.Entry)
 }
 
 // Entries returns a new slice containing entries encrypted with keyId and
@@ -289,3 +314,12 @@ func (s *sortByTitle) Swap(i, j int) {
       s.trimmedLowerTitles[j], s.trimmedLowerTitles[i]
 }
 
+func decryptHelper(key *vsafe.Key, entry *vsafe.Entry) (err error) {
+  if err = entry.Decrypt(key); err != nil {
+    if err == vsafe.ErrKeyMismatch {
+      err = ErrNoSuchId
+    }
+    return
+  }
+  return nil
+}

@@ -1,10 +1,8 @@
 package vsafe_test
 
 import (
-  "github.com/keep94/appcommon/etag"
   "github.com/keep94/appcommon/kdf"
   "github.com/keep94/vsafe"
-  "net/url"
   "testing"
 )
 
@@ -145,41 +143,3 @@ func TestEncryptDecrypt(t *testing.T) {
     t.Errorf("Expected ErrKeyMismatch, got %v", err)
   }
 }
-
-func TestEntryEtag(t *testing.T) {
-  url1, err := url.Parse("http://www.google.com")
-  if err != nil {
-    t.Fatal("Error parsing url1")
-  }
-  url2, err := url.Parse("http://www.yahoo.com")
-  if err != nil {
-    t.Fatal("Error parsing url1")
-  }
-  entry1 := vsafe.Entry{Url: url1}
-  entry2 := vsafe.Entry{Url: url2}
-  entry3 := vsafe.Entry{}
-  entry4 := entry2
-  tag1, err := etag.Etag32(&entry1)
-  if err != nil {
-    t.Fatal("Error computing etag")
-  }
-  tag2, err := etag.Etag32(&entry2)
-  if err != nil {
-    t.Fatal("Error computing etag")
-  }
-  tag3, err := etag.Etag32(&entry3)
-  if err != nil {
-    t.Fatal("Error computing etag")
-  }
-  tag4, err := etag.Etag32(&entry4)
-  if err != nil {
-    t.Fatal("Error computing etag")
-  }
-  if tag1 == tag2 || tag1 == tag3 || tag2 == tag3 {
-    t.Error("Etags should be unique")
-  }
-  if tag4 != tag2 {
-    t.Error("Expected etags to be equal")
-  }
-}
-

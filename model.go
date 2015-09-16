@@ -2,10 +2,8 @@
 package vsafe
 
 import (
-  "bytes"
   "crypto/hmac"
   "encoding/base64"
-  "encoding/gob"
   "errors"
   "github.com/keep94/appcommon/kdf"
   "github.com/keep94/vsafe/aes"
@@ -152,6 +150,20 @@ type Entry struct {
   Special string
 }
 
+// Read an EntryWithEtag instead of an Entry to collect the entry's etag
+type EntryWithEtag struct {
+  Entry
+  Etag uint64
+}
+
+func (e *EntryWithEtag) GetPtr() interface{} {
+  return &e.Entry
+}
+
+func (e *EntryWithEtag) SetEtag(etag uint64) {
+  e.Etag = etag
+}
+
 type entryProxy struct {
   Id int64
   Owner int64
@@ -175,20 +187,6 @@ func (p *entryProxy) fromEntry(e *Entry) {
   p.UName = e.UName
   p.Password = e.Password
   p.Special = e.Special
-}
-
-// GobEncode is provided to allow Entry instances to be used with the etag
-// package to create etags to detect concurrent modification.
-func (e *Entry) GobEncode() (b []byte, err error) {
-  buffer := bytes.NewBuffer(make([]byte, 0, 512))
-  encoder := gob.NewEncoder(buffer)
-  var p entryProxy
-  p.fromEntry(e)
-  if err = encoder.Encode(&p); err != nil {
-    return
-  }
-  b = buffer.Bytes()
-  return
 }
 
 // Encrypt encrypts sensitive fields in this instance using key namely

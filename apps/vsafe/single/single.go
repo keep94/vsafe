@@ -4,8 +4,8 @@ import (
   "errors"
   "fmt"
   "github.com/keep94/appcommon/db"
-  "github.com/keep94/appcommon/etag"
   "github.com/keep94/appcommon/http_util"
+  "github.com/keep94/gofunctional3/functional"
   "github.com/keep94/vsafe"
   "github.com/keep94/vsafe/apps/vsafe/common"
   "github.com/keep94/vsafe/vsafedb"
@@ -87,7 +87,7 @@ type Store interface {
   vsafedb.AddEntryRunner
   vsafedb.UpdateEntryRunner
   vsafedb.RemoveEntryRunner
-  vsafedb.EntryByIdRunner
+  vsafedb.EntryByIdWithEtagRunner
 }
 
 type Handler struct {
@@ -115,18 +115,19 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
   } else if http_util.HasParam(r.Form, "cancel") {
     // Do nothing
   } else {
-    var entry vsafe.Entry
-    err = toEntry(r.Form, &entry)
+    var mutation functional.Filterer
+    mutation, err = toEntry(r.Form)
     if err == nil {
       if isIdValid(id) {
-        tag, _ := strconv.ParseUint(r.Form.Get("etag"), 10, 32)
-        entry.Id = id
+        tag, _ := strconv.ParseUint(r.Form.Get("etag"), 10, 64)
         err = h.Doer.Do(func(t db.Transaction) error {
           return vsafedb.UpdateEntryWithEtag(
-              h.Store, t, uint32(tag), session.Key(), &entry)
+              h.Store, t, id, tag, session.Key(), mutation)
         })
       } else {
         var newId int64
+        var entry vsafe.Entry
+        mutation.Filter(&entry)
         newId, err = vsafedb.AddEntry(h.Store, nil, session.Key(), &entry)
         if err == nil {
           id = newId
@@ -160,8 +161,9 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
 func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
   session := common.GetUserSession(r)
   if isIdValid(id) {
-    var entry vsafe.Entry
-    err := vsafedb.EntryById(h.Store, nil, id, session.Key(), &entry)
+    var entryWithEtag vsafe.EntryWithEtag
+    err := vsafedb.EntryByIdWithEtag(
+        h.Store, nil, id, session.Key(), &entryWithEtag)
     if err == vsafedb.ErrNoSuchId {
       fmt.Fprintln(w, "No entry found.")
       return
@@ -174,7 +176,7 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
         w,
         kTemplate,
         newView(
-            fromEntry(&entry),
+            fromEntry(&entryWithEtag.Entry, entryWithEtag.Etag),
             true,
             session.Key().Id,
             nil))
@@ -199,20 +201,56 @@ func withId(url *url.URL, id int64) *url.URL {
   return &result
 }
 
-func toEntry(values url.Values, entry *vsafe.Entry) error {
-  var err error
-  if entry.Url, err = safeUrlParse(values.Get("url")); err != nil {
-    return err
+func toEntry(values url.Values) (mutation functional.Filterer, err error) {
+  url, err := safeUrlParse(values.Get("url"))
+  if err != nil {
+    return
   }
-  entry.Title = values.Get("title")
-  entry.Desc = values.Get("desc")
-  entry.UName = values.Get("uname")
-  entry.Password = values.Get("password")
-  entry.Special = values.Get("special")
-  return nil
+  title := values.Get("title")
+  desc := values.Get("desc")
+  uName := values.Get("uname")
+  password := values.Get("password")
+  special := values.Get("special")
+  mutation = functional.NewFilterer(func(ptr interface{}) error {
+
+    // We have to skip if nothing changed. Otherwise the etag will change
+    // when we update even if we don't change anything. This is because
+    // of the random seed added to the encryption.
+    entryPtr := ptr.(*vsafe.Entry)
+    changed := false
+    if safeUrlString(entryPtr.Url) != safeUrlString(url) {
+      entryPtr.Url = url
+      changed = true
+    }
+    if entryPtr.Title != title {
+      entryPtr.Title = title
+      changed = true
+    }
+    if entryPtr.Desc != desc {
+      entryPtr.Desc = desc
+      changed = true
+    }
+    if entryPtr.UName != uName {
+      entryPtr.UName = uName
+      changed = true
+    }
+    if entryPtr.Password != password {
+      entryPtr.Password = password
+      changed = true
+    }
+    if entryPtr.Special != special {
+      entryPtr.Special = special
+      changed = true
+    }
+    if changed {
+      return nil
+    }
+    return functional.Skipped
+  })
+  return
 }
 
-func fromEntry(entry *vsafe.Entry) url.Values {
+func fromEntry(entry *vsafe.Entry, tag uint64) url.Values {
   result := make(url.Values)
   result.Set("url", safeUrlString(entry.Url))
   result.Set("title", entry.Title)
@@ -220,11 +258,7 @@ func fromEntry(entry *vsafe.Entry) url.Values {
   result.Set("uname", entry.UName)
   result.Set("password", entry.Password)
   result.Set("special", entry.Special)
-  tag, err := etag.Etag32(entry)
-  if err != nil {
-    panic(err)
-  }
-  result.Set("etag", strconv.FormatInt(int64(tag), 10))
+  result.Set("etag", strconv.FormatUint(tag, 10))
   return result
 }
 

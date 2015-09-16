@@ -120,6 +120,19 @@ func (s Store) EntryById(
   })
 }
 
+func (s Store) EntryByIdWithEtag(
+    t db.Transaction, id int64, entry *vsafe.EntryWithEtag) error {
+  return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
+    return sqlite_db.ReadSingle(
+        conn,
+        &rawEntry{},
+        vsafedb.ErrNoSuchId,
+        entry,
+        kSQLEntryById,
+        id)
+  })
+}
+
 func (s Store) EntriesByOwner(
     t db.Transaction, owner int64, consumer functional.Consumer) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
