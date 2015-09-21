@@ -39,8 +39,15 @@ func main() {
     usersById[user.Id] = user
   }
   for _, user := range users {
-    fmt.Printf("%s\t%s\n", user.Name, usersById[user.GetOwner()].Name)
+    fmt.Printf("%s\t%s\n", user.Name, ownerStr(usersById, user.GetOwner()))
   }
+}
+
+func ownerStr(userMap map[int64]*vsafe.User, ownerId int64) string {
+  if userMap[ownerId] == nil {
+    return fmt.Sprintf("(%d)", ownerId)
+  }
+  return userMap[ownerId].Name
 }
 
 func init() {
