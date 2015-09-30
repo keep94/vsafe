@@ -1,7 +1,6 @@
 package main
 
 import (
-  "code.google.com/p/gosqlite/sqlite"
   "errors"
   "flag"
   "fmt"
@@ -11,6 +10,7 @@ import (
   "github.com/keep94/appcommon/db/sqlite_db"
   "github.com/keep94/appcommon/http_util"
   "github.com/keep94/appcommon/logging"
+  "github.com/keep94/gosqlite/sqlite"
   "github.com/keep94/ramstore"
   "github.com/keep94/vsafe"
   "github.com/keep94/vsafe/apps/vsafe/common"

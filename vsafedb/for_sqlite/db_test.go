@@ -1,8 +1,8 @@
 package for_sqlite_test
 
 import (
-  "code.google.com/p/gosqlite/sqlite"
   "github.com/keep94/appcommon/db/sqlite_db"
+  "github.com/keep94/gosqlite/sqlite"
   "github.com/keep94/vsafe/vsafedb/fixture"
   "github.com/keep94/vsafe/vsafedb/for_sqlite"
   "github.com/keep94/vsafe/vsafedb/sqlite_setup"

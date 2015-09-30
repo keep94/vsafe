@@ -1,10 +1,10 @@
 package main
 
 import (
-  "code.google.com/p/gosqlite/sqlite"
   "flag"
   "fmt"
   "github.com/keep94/appcommon/db/sqlite_db"
+  "github.com/keep94/gosqlite/sqlite"
   "github.com/keep94/vsafe"
   "github.com/keep94/vsafe/vsafedb/for_sqlite"
   "github.com/keep94/vsafe/vsafedb/sqlite_setup"
