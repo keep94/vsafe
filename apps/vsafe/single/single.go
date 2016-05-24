@@ -99,6 +99,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
   r.ParseForm()
   id, _ := strconv.ParseInt(r.Form.Get("id"), 10, 64)
   if r.Method == "GET" {
+    goBack(w, r, id)
+  } else if r.Form.Get("etag") == "" {
     h.doGet(w, r, id)
   } else {
     h.doPost(w, r, id)
@@ -148,13 +150,7 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
             session.Key().Id,
             err))
   } else {
-    var u *url.URL
-    u, err = url.Parse(r.Form.Get("prev"))
-    if err != nil {
-      http_util.ReportError(w, "Error parsing prev url", err)
-      return
-    }
-    http_util.Redirect(w, r, withId(u, id).String())
+    goBack(w, r, id)
   }
 }
 
@@ -183,6 +179,11 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
   } else {
     initValues := make(url.Values)
     initValues.Set("url", "http://")
+    // Because this page is always POST, the presence of etag signals that
+    // we are editing an entry, not fetching for the first time.
+    // The value of etag in this context does not matter since we are editing
+    // a new entry.
+    initValues.Set("etag", "new")
     http_util.WriteTemplate(
         w,
         kTemplate,
@@ -275,6 +276,16 @@ func safeUrlString(u *url.URL) string {
     return ""
   }
   return u.String()
+}
+
+func goBack(w http.ResponseWriter, r *http.Request, id int64) {
+    var u *url.URL
+    u, err := url.Parse(r.Form.Get("prev"))
+    if err != nil {
+      http_util.ReportError(w, "Error parsing prev url", err)
+      return
+    }
+    http_util.Redirect(w, r, withId(u, id).String())
 }
 
 type view struct {

@@ -29,7 +29,9 @@ kTemplateSpec = `
   <input type="text" name="q" value="{{.Get "q"}}" />
   <input type="submit" value="Search" />
 </form>
-<a href="{{.EntryLink 0}}" accesskey="n">New Entry (Ctrl+Alt+N)</a>
+<form method="post" action="{{.EntryLink 0}}">
+   <input type="submit" accesskey="n" value="New Entry (Ctrl+Alt+N)">
+</form>
 &nbsp;
 &nbsp;
 <a href="/vsafe/chpasswd">Change password</a>
@@ -68,13 +70,17 @@ kTemplateSpec = `
       {{if $top.HasAnchor $idx}}<a name="{{$top.Anchor $idx}}" />{{end}}
       <a href="{{if .Url}}{{.Url}}{{end}}" target="_blank">{{.Title}}</a>
     </td>
-    <td><a href="{{$top.EntryLink .Id}}">View</a></td>
+    <td rowspan="2" bgcolor="#FFFFFF">
+      <form method="post" action="{{$top.EntryLink .Id}}">
+        <input type="submit" value="View">
+      </form>
+   </td>
   </tr>
   <tr>
     {{if .Desc}}
-      <td colspan=2>{{.Desc}}</td>
+      <td>{{.Desc}}</td>
     {{else}}
-      <td colspan=2>&nbsp;</td>
+      <td>&nbsp;</td>
     {{end}}
   </tr>
  {{end}}
