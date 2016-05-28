@@ -16,6 +16,10 @@ import (
   "strings"
 )
 
+const (
+  kSingle = "single"
+)
+
 var (
 kTemplateSpec = `
 <html>
@@ -30,6 +34,7 @@ kTemplateSpec = `
   <span class="error">{{.Error}}</span>
 {{end}}
 <form method="post">
+  <input type="hidden" name="xsrf" value="{{.Xsrf}}">
   <input type="hidden" name="etag" value="{{.Get "etag"}}">
   <table>
     <tr>
@@ -110,7 +115,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
   var err error
   session := common.GetUserSession(r)
-  if http_util.HasParam(r.Form, "delete") {
+  if !common.VerifyXsrfToken(r, kSingle) {
+    err = common.ErrXsrf
+  } else if http_util.HasParam(r.Form, "delete") {
     if isIdValid(id) {
       err = h.Store.RemoveEntry(nil, id, session.User.GetOwner())
     }
@@ -148,6 +155,7 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
             r.Form,
             isIdValid(id),
             session.Key().Id,
+            common.NewXsrfToken(r, kSingle),
             err))
   } else {
     goBack(w, r, id)
@@ -175,6 +183,7 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
             fromEntry(&entryWithEtag.Entry, entryWithEtag.Etag),
             true,
             session.Key().Id,
+            common.NewXsrfToken(r, kSingle),
             nil))
   } else {
     initValues := make(url.Values)
@@ -191,6 +200,7 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
             initValues,
             false,
             session.Key().Id,
+            common.NewXsrfToken(r, kSingle),
             nil))
   }
 }
@@ -293,17 +303,20 @@ type view struct {
   Error error
   ExistingEntry bool
   KeyId int64
+  Xsrf string
 }
 
 func newView(
     values url.Values,
     existingEntry bool,
     keyId int64,
+    xsrf string,
     err error) *view {
   return &view{
       Values: http_util.Values{values},
       ExistingEntry: existingEntry,
       KeyId: keyId,
+      Xsrf: xsrf,
       Error: err}
 }
 

@@ -27,6 +27,7 @@ import (
 )
 
 const (
+  // Set to the same thing as kXsrfTimeout in common/common.go
   kSessionTimeout = 900
 )
 

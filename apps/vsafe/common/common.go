@@ -3,16 +3,27 @@
 package common
 
 import (
+  "errors"
   "github.com/gorilla/sessions"
   "github.com/keep94/appcommon/session_util"
   "github.com/keep94/vsafe"
   "github.com/keep94/vsafe/vsafedb"
   "html/template"
   "net/http"
+  "time"
 )
 
 const (
   kCookieName = "session-cookie"
+)
+
+const (
+  // Set to the same thing as kSessionTimeout in vsafe.go
+  kXsrfTimeout = 15 * time.Minute
+)
+
+var (
+  ErrXsrf = errors.New("Page had grown stale. Please resubmit.")
 )
 
 // NewGorillaSession creates a gorilla session for the vsafe app.
@@ -97,6 +108,19 @@ func (s *UserSession) SetKey(key *vsafe.Key) {
 // of the template; templateStr is the template string.
 func NewTemplate(name, templateStr string) *template.Template {
   return template.Must(template.New(name).Parse(templateStr))
+}
+
+// NewXsrfToken creates a new xsrf token for given action.
+func NewXsrfToken(r *http.Request, action string) string {
+  userSession := GetUserSession(r)
+  return userSession.NewXsrfToken(action, time.Now().Add(kXsrfTimeout))
+}
+
+// VerifyXsrfToken verifies the xsrf token for given action.
+// VerifyXsrfToken looks for the token under "xsrf" in request.
+func VerifyXsrfToken(r *http.Request, action string) bool {
+  userSession := GetUserSession(r)
+  return userSession.VerifyXsrfToken(r.Form.Get("xsrf"), action, time.Now())
 }
 
 type userGetter struct {
