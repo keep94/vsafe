@@ -55,8 +55,32 @@ type RemoveUserRunner interface {
   RemoveUser(t db.Transaction, name string) error
 }
 
+type AddCategoryRunner interface {
+  // AddCategory adds a new category to persistent storage
+  AddCategory(t db.Transaction, category *vsafe.Category) error
+}
+
+type CategoriesByOwnerRunner interface {
+  // CategoriesByOwner retrieves all categories with a particular owner
+  // from persistent storage ordered by category name.
+  CategoriesByOwner(
+      t db.Transaction, owner int64) ([]vsafe.Category, error)
+}
+
+type UpdateCategoryNameRunner interface {
+  // UpdateCategoryName updates a category name.
+  UpdateCategoryName(
+      t db.Transaction, id, owner int64, newName string) error
+}
+
+type RemoveCategoryRunner interface {
+  // RemoveCategory removes a category with given id and owner from
+  //  persistent storage.
+  RemoveCategory(t db.Transaction, id, owner int64) error
+}
+
 type AddEntryRunner interface {
-  // AddEntryRunner adds a new entry to persistent storage.
+  // AddEntry adds a new entry to persistent storage.
   AddEntry(t db.Transaction, entry *vsafe.Entry) error
 }
 
