@@ -23,8 +23,9 @@ const (
   kSQLRemoveUser = "delete from user where name = ?"
   kSQLAddCategory = "insert into category (owner, name) values (?, ?)"
   kSQLCategoryByOwner = "select id, owner, name from category where owner = ? order by name"
-  kSQLUpdateCategoryName = "update category set name = ? where id = ? and owner = ?"
-  kSQLRemoveCategory = "delete from category where id = ? and owner = ?"
+  kSQLCategoryById = "select id, owner, name from category where id = ?"
+  kSQLUpdateCategory = "update category set owner = ?, name = ? where id = ?"
+  kSQLRemoveCategory = "delete from category where id = ?"
   kSQLEntryById = "select id, owner, url, title, desc, uname, password, special, categories from entry where id = ?"
   kSQLEntryByOwner = "select id, owner, url, title, desc, uname, password, special, categories from entry where owner = ? order by id"
   kSQLAddEntry = "insert into entry (owner, url, title, desc, uname, password, special, categories) values (?, ?, ?, ?, ?, ?, ?, ?)"
@@ -131,17 +132,28 @@ func (s Store) CategoriesByOwner(
   return result, nil
 }
 
-func (s Store) UpdateCategoryName(
-    t db.Transaction, id, owner int64, newName string) error {
+func (s Store) CategoryById(
+    t db.Transaction, id int64, category *vsafe.Category) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return conn.Exec(kSQLUpdateCategoryName, newName, id, owner)
+    return sqlite_db.ReadSingle(
+        conn,
+        &rawCategory{},
+        vsafedb.ErrNoSuchId,
+        category,
+        kSQLCategoryById,
+        id)
   })
 }
 
-func (s Store) RemoveCategory(
-    t db.Transaction, id, owner int64) error {
+func (s Store) UpdateCategory(t db.Transaction, category *vsafe.Category) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return conn.Exec(kSQLRemoveCategory, id, owner)
+    return sqlite_db.UpdateRow(conn, &rawCategory{}, category, kSQLUpdateCategory)
+  })
+}
+
+func (s Store) RemoveCategory(t db.Transaction, id int64) error {
+  return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
+    return conn.Exec(kSQLRemoveCategory, id)
   })
 }
 

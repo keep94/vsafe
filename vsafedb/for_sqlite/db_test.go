@@ -50,11 +50,18 @@ func TestCategoriesByOwner(t *testing.T) {
   defer closeDb(t, db)
   fixture.CategoriesByOwner(t, for_sqlite.New(db))
 }
-  
-func TestUpdateCategoryName(t *testing.T) {
+
+func TestCategoryById(t *testing.T) {
   db := openDb(t)
   defer closeDb(t, db)
-  fixture.UpdateCategoryName(t, for_sqlite.New(db))
+  fixture.CategoryById(t, for_sqlite.New(db))
+}
+
+  
+func TestUpdateCategory(t *testing.T) {
+  db := openDb(t)
+  defer closeDb(t, db)
+  fixture.UpdateCategory(t, for_sqlite.New(db))
 }
 
 func TestRemoveCategory(t *testing.T) {

@@ -86,9 +86,14 @@ type CategoriesByOwnerStore interface {
   vsafedb.CategoriesByOwnerRunner
 }
 
-type UpdateCategoryNameStore interface {
+type CategoryByIdStore interface {
+  vsafedb.AddCategoryRunner
+  vsafedb.CategoryByIdRunner
+}
+
+type UpdateCategoryStore interface {
   CategoriesByOwnerStore
-  vsafedb.UpdateCategoryNameRunner
+  vsafedb.UpdateCategoryRunner
 }
 
 type RemoveCategoryStore interface {
@@ -221,14 +226,25 @@ func CategoriesByOwner(t *testing.T, store CategoriesByOwnerStore) {
   assertCategoryNames(t, categories, "one", "three", "two")
 }
 
-func UpdateCategoryName(t *testing.T, store UpdateCategoryNameStore) {
+func CategoryById(t *testing.T, store CategoryByIdStore) {
+  createCategories(t, store)
+  var category vsafe.Category
+  if err := store.CategoryById(nil, 2, &category); err != nil {
+    t.Fatalf("Got error reading category: %v", err)
+  }
+  if category.Name != "two" {
+    t.Errorf("Expected 'two', got %s", category.Name)
+  }
+  if err := store.CategoryById(nil, 99, &category); err != vsafedb.ErrNoSuchId {
+    t.Error("Expected ErrNoSuchId")
+  }
+}
+
+func UpdateCategory(t *testing.T, store UpdateCategoryStore) {
   createCategories(t, store)
   // 3 corresponds to category "three"
-  if err := store.UpdateCategoryName(nil, 3, 1, "updated"); err != nil {
-    t.Fatalf("Got error updating category: %v", err)
-  }
-  // wrong owner doesn't update
-  if err := store.UpdateCategoryName(nil, 3, 2, "wrong"); err != nil {
+  category := vsafe.Category{Id: 3, Owner: 1, Name: "updated"}
+  if err := store.UpdateCategory(nil, &category); err != nil {
     t.Fatalf("Got error updating category: %v", err)
   }
   categories, err := store.CategoriesByOwner(nil, 1)
@@ -240,11 +256,7 @@ func UpdateCategoryName(t *testing.T, store UpdateCategoryNameStore) {
 
 func RemoveCategory(t *testing.T, store RemoveCategoryStore) {
   createCategories(t, store)
-  if err := store.RemoveCategory(nil, 3, 1); err != nil {
-    t.Fatalf("Got error removing category: %v", err)
-  }
-  // wrong owner doesn't remove
-  if err := store.RemoveCategory(nil, 2, 2); err != nil {
+  if err := store.RemoveCategory(nil, 3); err != nil {
     t.Fatalf("Got error removing category: %v", err)
   }
   categories, err := store.CategoriesByOwner(nil, 1)
