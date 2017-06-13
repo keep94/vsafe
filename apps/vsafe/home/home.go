@@ -27,6 +27,14 @@ kTemplateSpec = `
 <h2>Vsafe using Go for {{.Name}}</h2>
 <form action="/vsafe/home">
   <input type="text" name="q" value="{{.Get "q"}}" />
+  <select name="cat" size=1>
+{{with .GetSelection .CatSelections "cat"}}
+    <option value="{{.Value}}">{{.Name}}</option>
+{{end}}
+    <option value="">--All--</option>
+{{range .CatSelections}}
+    <option value="{{.Value}}">{{.Name}}</option>
+{{end}}
   <input type="submit" value="Search" />
 </form>
 <form method="post" action="{{.EntryLink 0}}">
@@ -35,6 +43,9 @@ kTemplateSpec = `
 &nbsp;
 &nbsp;
 <a href="/vsafe/chpasswd">Change password</a>
+&nbsp;
+&nbsp;
+<a href="/vsafe/catedit">Edit categories</a>
 &nbsp;
 &nbsp;
 <a href="/vsafe/logout">Sign out</a>
@@ -94,8 +105,13 @@ var (
   kTemplate *template.Template
 )
 
+type Store interface {
+  vsafedb.EntriesByOwnerRunner
+  vsafedb.CategoriesByOwnerRunner
+}
+
 type Handler struct {
-  Store vsafedb.EntriesByOwnerRunner
+  Store Store
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +119,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
   session := common.GetUserSession(r)
   sortBy := r.Form.Get("sort")
   id, _ := strconv.ParseInt(r.Form.Get("id"), 10, 64)
-  entries, err := vsafedb.Entries(h.Store, session.Key().Id, r.Form.Get("q"))
+  catId, _ := strconv.ParseInt(r.Form.Get("cat"), 10, 64)
+  categories, err := h.Store.CategoriesByOwner(nil, session.Key().Id)
+  if err != nil {
+    http_util.ReportError(w, "Error reading database", err)
+    return
+  }
+  entries, err := vsafedb.Entries(h.Store, session.Key().Id, r.Form.Get("q"), catId)
   if err != nil {
     http_util.ReportError(w, "Error reading database", err)
     return
@@ -122,7 +144,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
           Name: session.User.Name,
           Entries: entries,
           Url: r.URL,
-          Id: id})
+          Id: id,
+          CatSelections: common.CatSelections(categories)})
 }
 
 type view struct {
@@ -131,6 +154,7 @@ type view struct {
   Entries []*vsafe.Entry
   Url *url.URL
   Id int64
+  CatSelections http_util.Selections
 }
 
 func (v *view) HasAnchor(idx int) bool {

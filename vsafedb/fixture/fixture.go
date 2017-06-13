@@ -41,6 +41,7 @@ var (
     UName: "keep94",
     Password: "password",
     Special: "special",
+    Categories: "3,7",
   }
 
   kSecondEntry = &vsafe.Entry{
@@ -51,6 +52,7 @@ var (
     UName: "keep95",
     Password: "loco",
     Special: "never",
+    Categories: "2",
   }
 )
 
@@ -77,6 +79,26 @@ type UpdateUserStore interface {
 type RemoveUserStore interface {
   UserByIdStore
   vsafedb.RemoveUserRunner
+}
+
+type CategoriesByOwnerStore interface {
+  vsafedb.AddCategoryRunner
+  vsafedb.CategoriesByOwnerRunner
+}
+
+type CategoryByIdStore interface {
+  vsafedb.AddCategoryRunner
+  vsafedb.CategoryByIdRunner
+}
+
+type UpdateCategoryStore interface {
+  CategoriesByOwnerStore
+  vsafedb.UpdateCategoryRunner
+}
+
+type RemoveCategoryStore interface {
+  CategoriesByOwnerStore
+  vsafedb.RemoveCategoryRunner
 }
 
 type EntryByIdStore interface {
@@ -194,6 +216,56 @@ func UserDupName(t *testing.T, store vsafedb.AddUserRunner) {
   }
 }
 
+func CategoriesByOwner(t *testing.T, store CategoriesByOwnerStore) {
+  createCategories(t, store)
+  categories, err := store.CategoriesByOwner(nil, 1)
+  if err != nil {
+    t.Fatalf("Got error reading categories: %v", err)
+  }
+  // sorted by name
+  assertCategoryNames(t, categories, "one", "three", "two")
+}
+
+func CategoryById(t *testing.T, store CategoryByIdStore) {
+  createCategories(t, store)
+  var category vsafe.Category
+  if err := store.CategoryById(nil, 2, &category); err != nil {
+    t.Fatalf("Got error reading category: %v", err)
+  }
+  if category.Name != "two" {
+    t.Errorf("Expected 'two', got %s", category.Name)
+  }
+  if err := store.CategoryById(nil, 99, &category); err != vsafedb.ErrNoSuchId {
+    t.Error("Expected ErrNoSuchId")
+  }
+}
+
+func UpdateCategory(t *testing.T, store UpdateCategoryStore) {
+  createCategories(t, store)
+  // 3 corresponds to category "three"
+  category := vsafe.Category{Id: 3, Owner: 1, Name: "updated"}
+  if err := store.UpdateCategory(nil, &category); err != nil {
+    t.Fatalf("Got error updating category: %v", err)
+  }
+  categories, err := store.CategoriesByOwner(nil, 1)
+  if err != nil {
+    t.Fatalf("Got error reading categories: %v", err)
+  }
+  assertCategoryNames(t, categories, "one", "two", "updated")
+}
+
+func RemoveCategory(t *testing.T, store RemoveCategoryStore) {
+  createCategories(t, store)
+  if err := store.RemoveCategory(nil, 3); err != nil {
+    t.Fatalf("Got error removing category: %v", err)
+  }
+  categories, err := store.CategoriesByOwner(nil, 1)
+  if err != nil {
+    t.Fatalf("Got error reading categories: %v", err)
+  }
+  assertCategoryNames(t, categories, "one", "two")
+}
+
 func EntryById(t *testing.T, store EntryByIdStore) {
   var first, second vsafe.Entry
   var firstResult, secondResult vsafe.Entry
@@ -294,6 +366,29 @@ func createUser(
   }
 }
 
+func createCategories(t *testing.T, store vsafedb.AddCategoryRunner) {
+  cat := vsafe.Category{Name: "one", Owner: 1}
+  createCategory(t, store, &cat)
+  cat = vsafe.Category{Name: "two", Owner: 1}
+  createCategory(t, store, &cat)
+  cat = vsafe.Category{Name: "three", Owner: 1}
+  createCategory(t, store, &cat)
+  cat = vsafe.Category{Name: "wrong", Owner: 2}
+  createCategory(t, store, &cat)
+}
+
+func createCategory(
+     t *testing.T,
+     store vsafedb.AddCategoryRunner,
+     toBeAdded *vsafe.Category) {
+  if err := store.AddCategory(nil, toBeAdded); err != nil {
+    t.Fatalf("Got %v adding to category", err)
+  }
+  if toBeAdded.Id == 0 {
+    t.Error("Expected Id to be set.")
+  }
+}
+
 func createEntries(
     t *testing.T,
     store vsafedb.AddEntryRunner,
@@ -314,6 +409,20 @@ func createEntry(
   }
   if result.Id == 0 {
     t.Error("Expected Id to be set.")
+  }
+}
+
+func assertCategoryNames(
+    t *testing.T, categories []vsafe.Category, expected ...string) {
+  catlen, explen := len(categories), len(expected)
+  if catlen != explen {
+    t.Errorf("Expected %d categories, got %d", explen, catlen)
+    return
+  }
+  for i := range categories {
+    if categories[i].Name != expected[i] {
+      t.Errorf("Expected %s, got %s", expected[i], categories[i].Name)
+    }
   }
 }
 

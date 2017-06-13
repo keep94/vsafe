@@ -5,6 +5,7 @@ import (
   "crypto/hmac"
   "encoding/base64"
   "errors"
+  "github.com/keep94/appcommon/idset"
   "github.com/keep94/appcommon/kdf"
   "github.com/keep94/vsafe/aes"
   "net/url"
@@ -129,6 +130,16 @@ func (u *User) verifyPassword(password string) ([]byte, error) {
   return key, nil
 }
 
+// Category represents a group of entries
+type Category struct {
+  // Category id
+  Id int64
+  // The owner which corresponds to the master user ID.
+  Owner int64
+  // Category name
+  Name string
+}
+
 // Entry represents an entry stored in the vsafe database. UName
 // Password and Special fields are encrypted in persistent storage.
 type Entry struct {
@@ -148,6 +159,8 @@ type Entry struct {
   Password string
   // Special instructions
   Special string
+  // Categories to which this entry belongs
+  Categories idset.IdSet
 }
 
 // Read an EntryWithEtag instead of an Entry to collect the entry's etag
@@ -162,31 +175,6 @@ func (e *EntryWithEtag) GetPtr() interface{} {
 
 func (e *EntryWithEtag) SetEtag(etag uint64) {
   e.Etag = etag
-}
-
-type entryProxy struct {
-  Id int64
-  Owner int64
-  Url string
-  Title string
-  Desc string
-  UName string
-  Password string
-  Special string
-}
-
-func (p *entryProxy) fromEntry(e *Entry) {
-  p.Id = e.Id
-  p.Owner = e.Owner
-  p.Url = ""
-  if e.Url != nil {
-    p.Url = e.Url.String()
-  }
-  p.Title = e.Title
-  p.Desc = e.Desc
-  p.UName = e.UName
-  p.Password = e.Password
-  p.Special = e.Special
 }
 
 // Encrypt encrypts sensitive fields in this instance using key namely

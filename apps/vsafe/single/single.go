@@ -5,6 +5,7 @@ import (
   "fmt"
   "github.com/keep94/appcommon/db"
   "github.com/keep94/appcommon/http_util"
+  "github.com/keep94/appcommon/idset"
   "github.com/keep94/gofunctional3/functional"
   "github.com/keep94/vsafe"
   "github.com/keep94/vsafe/apps/vsafe/common"
@@ -18,6 +19,15 @@ import (
 
 const (
   kSingle = "single"
+)
+
+const (
+  kCatColumnCount = 5
+  kMaxCategories = 10
+)
+
+var (
+  kErrTooManyCategories = errors.New("No more than 10 categories can be selected")
 )
 
 var (
@@ -67,6 +77,21 @@ kTemplateSpec = `
     </tr>
   </table>
   <table>
+    {{with $top:=.}}
+    {{range .CatRows}}
+      <tr>
+        {{range .}}
+          {{if .}}
+            <td><input type="checkbox" name="cat" value="{{.Id}}" {{if index $top.CatMap .Id}}checked{{end}}>{{.Name}}</td>
+          {{else}}
+            <td>&nbsp;</td>
+          {{end}}
+        {{end}}
+      </tr>
+    {{end}}
+    {{end}}
+  </table>
+  <table>
     <tr>
       <td><input type="submit" name="save" value="Save" /></td>
       <td><input type="submit" name="cancel" value="Cancel" /></td>
@@ -93,6 +118,7 @@ type Store interface {
   vsafedb.UpdateEntryRunner
   vsafedb.RemoveEntryRunner
   vsafedb.EntryByIdWithEtagRunner
+  vsafedb.CategoriesByOwnerRunner
 }
 
 type Handler struct {
@@ -115,6 +141,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
   var err error
   session := common.GetUserSession(r)
+  categories, err := h.Store.CategoriesByOwner(nil, session.Key().Id)
+  if err != nil {
+    http_util.ReportError(w, "Error reading database.", err)
+    return
+  }
+  catRows := toCatRows(categories)
+  catMap, err := toCatMap(r.Form["cat"])
+  if err != nil {
+    http_util.ReportError(w, "Error setting checkboxes", err)
+    return
+  }
   if !common.VerifyXsrfToken(r, kSingle) {
     err = common.ErrXsrf
   } else if http_util.HasParam(r.Form, "delete") {
@@ -125,7 +162,7 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
     // Do nothing
   } else {
     var mutation functional.Filterer
-    mutation, err = toEntry(r.Form)
+    mutation, err = toEntry(r.Form, catMap)
     if err == nil {
       if isIdValid(id) {
         tag, _ := strconv.ParseUint(r.Form.Get("etag"), 10, 64)
@@ -155,6 +192,8 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
             r.Form,
             isIdValid(id),
             session.Key().Id,
+            catRows,
+            catMap,
             common.NewXsrfToken(r, kSingle),
             err))
   } else {
@@ -164,6 +203,12 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
 
 func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
   session := common.GetUserSession(r)
+  categories, err := h.Store.CategoriesByOwner(nil, session.Key().Id)
+  if err != nil {
+    http_util.ReportError(w, "Error reading database.", err)
+    return
+  }
+  catRows := toCatRows(categories)
   if isIdValid(id) {
     var entryWithEtag vsafe.EntryWithEtag
     err := vsafedb.EntryByIdWithEtag(
@@ -176,6 +221,11 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
       http_util.ReportError(w, "Error reading database.", err)
       return
     }
+    catMap, err := entryWithEtag.Entry.Categories.Map()
+    if err != nil {
+      fmt.Fprintln(w, "Category data for entry corrupt.")
+      return
+    }
     http_util.WriteTemplate(
         w,
         kTemplate,
@@ -183,6 +233,8 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
             fromEntry(&entryWithEtag.Entry, entryWithEtag.Etag),
             true,
             session.Key().Id,
+            catRows,
+            catMap,
             common.NewXsrfToken(r, kSingle),
             nil))
   } else {
@@ -200,6 +252,8 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
             initValues,
             false,
             session.Key().Id,
+            catRows,
+            nil,
             common.NewXsrfToken(r, kSingle),
             nil))
   }
@@ -212,7 +266,11 @@ func withId(url *url.URL, id int64) *url.URL {
   return &result
 }
 
-func toEntry(values url.Values) (mutation functional.Filterer, err error) {
+func toEntry(values url.Values, catMap map[int64]bool) (mutation functional.Filterer, err error) {
+  if len(catMap) > kMaxCategories {
+    err = kErrTooManyCategories
+    return
+  }
   url, err := safeUrlParse(values.Get("url"))
   if err != nil {
     return
@@ -222,6 +280,7 @@ func toEntry(values url.Values) (mutation functional.Filterer, err error) {
   uName := values.Get("uname")
   password := values.Get("password")
   special := values.Get("special")
+  categories := idset.New(catMap)
   mutation = functional.NewFilterer(func(ptr interface{}) error {
 
     // We have to skip if nothing changed. Otherwise the etag will change
@@ -251,6 +310,10 @@ func toEntry(values url.Values) (mutation functional.Filterer, err error) {
     }
     if entryPtr.Special != special {
       entryPtr.Special = special
+      changed = true
+    }
+    if entryPtr.Categories != categories {
+      entryPtr.Categories = categories
       changed = true
     }
     if changed {
@@ -298,24 +361,61 @@ func goBack(w http.ResponseWriter, r *http.Request, id int64) {
     http_util.Redirect(w, r, withId(u, id).String())
 }
 
+func toCatMap(cats []string) (map[int64]bool, error) {
+  result := make(map[int64]bool, len(cats))
+  for _, cat := range cats {
+    catId, err := strconv.ParseInt(cat, 10, 64)
+    if err != nil {
+      return map[int64]bool{}, err
+    }
+    result[catId] = true
+  }
+  return result, nil
+}
+
+func toCatRows(cats []vsafe.Category) (result [][]*vsafe.Category) {
+  var row []*vsafe.Category
+  for _, cat := range cats {
+    cat := cat
+    row = append(row, &cat)
+    if len(row) == kCatColumnCount {
+      result = append(result, row)
+      row = nil
+    }
+  }
+  if len(row) > 0 {
+    for len(row) < kCatColumnCount {
+      row = append(row, nil)
+    }
+    result = append(result, row)
+  }
+  return
+}
+
 type view struct {
   http_util.Values
   Error error
   ExistingEntry bool
   KeyId int64
   Xsrf string
+  CatRows [][]*vsafe.Category
+  CatMap map[int64]bool
 }
 
 func newView(
     values url.Values,
     existingEntry bool,
     keyId int64,
+    catRows [][]*vsafe.Category,
+    catMap map[int64]bool,
     xsrf string,
     err error) *view {
   return &view{
       Values: http_util.Values{values},
       ExistingEntry: existingEntry,
       KeyId: keyId,
+      CatRows: catRows,
+      CatMap: catMap,
       Xsrf: xsrf,
       Error: err}
 }

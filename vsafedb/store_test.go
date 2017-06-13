@@ -25,6 +25,71 @@ var (
   kTransaction db.Transaction = 0
 )  
 
+func TestUpdateCategory(t *testing.T) {
+  store := &FakeCategoryStore{
+      Category: &vsafe.Category{Id: 5, Owner: 3, Name: "five"}}
+  // wrong Id throws ErrNoSuchId
+  _, err := vsafedb.UpdateCategory(store, kTransaction, 2, 3, "updated")
+  if err != vsafedb.ErrNoSuchId {
+    t.Error("Expected ErrNoSuchId")
+  }
+
+  // Wrong owner throws ErrNoSuchId
+  _, err = vsafedb.UpdateCategory(store, kTransaction, 5, 2, "updated")
+  if err != vsafedb.ErrNoSuchId {
+    t.Error("Expected ErrNoSuchId")
+  }
+
+  if store.Category.Name != "five" {
+    t.Error("Expected category to remain unchanged")
+  }
+
+  oldName, err := vsafedb.UpdateCategory(
+      store, kTransaction, 5, 3, "updated")
+  if  err != nil {
+    t.Fatal("Got error updating category")
+  }
+  if oldName != "five" {
+    t.Error("Expected old name to be five")
+  }
+
+  if store.Category.Name != "updated" {
+    t.Error("Expected category to be updated")
+  }
+}
+
+func TestRemoveCategory(t *testing.T) {
+  store := &FakeCategoryStore{
+      Category: &vsafe.Category{Id: 5, Owner: 3, Name: "five"}}
+  // wrong Id throws ErrNoSuchId
+  _, err := vsafedb.RemoveCategory(store, kTransaction, 2, 3)
+  if err != vsafedb.ErrNoSuchId {
+    t.Error("Expected ErrNoSuchId")
+  }
+
+  // Wrong owner throws ErrNoSuchId
+  _, err = vsafedb.RemoveCategory(store, kTransaction, 5, 2)
+  if err != vsafedb.ErrNoSuchId {
+    t.Error("Expected ErrNoSuchId")
+  }
+
+  if store.Category.Name != "five" {
+    t.Error("Expected category to remain unchanged")
+  }
+
+  oldName, err := vsafedb.RemoveCategory(store, kTransaction, 5, 3)
+  if  err != nil {
+    t.Fatal("Got error removing category")
+  }
+  if oldName != "five" {
+    t.Error("Expected old name to be five")
+  }
+
+  if store.Category != nil {
+    t.Error("Expected category to be removed")
+  }
+}
+
 func TestAddEntry(t *testing.T) {
   var store FakeStore
   entry := *kAnEntry
@@ -224,11 +289,11 @@ func TestEntries(t *testing.T) {
   var store FakeStore
   entry1 := vsafe.Entry{Title: " First", Url: yahoo, Desc: "the SeconD   oNe"}
   entry2 := vsafe.Entry{Title: "aGAiN  sEcond", Url: google, Desc: "a desc"}
-  entry3 := vsafe.Entry{Title: "third again", Desc: "foo bar"}
+  entry3 := vsafe.Entry{Title: "third again", Desc: "foo bar", Categories: "17"}
   vsafedb.AddEntry(&store, nil, kKey, &entry1)
   vsafedb.AddEntry(&store, nil, kKey, &entry2)
   vsafedb.AddEntry(&store, nil, kKey, &entry3)
-  entries, err := vsafedb.Entries(store, kKey.Id, "")
+  entries, err := vsafedb.Entries(store, kKey.Id, "", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
@@ -238,54 +303,68 @@ func TestEntries(t *testing.T) {
   if entries[0].Title != entry1.Title || entries[1].Title != entry2.Title || entries[2].Title != entry3.Title {
     t.Error("Returned 3 entries in wrong order")
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, "  first")
+  entries, err = vsafedb.Entries(store, kKey.Id, "  first", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 1 {
     t.Errorf("Expected 1 entries, got %v", len(entries))
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, "second  ")
+  entries, err = vsafedb.Entries(store, kKey.Id, "second  ", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 2 {
     t.Errorf("Expected 2 entries, got %v", len(entries))
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, "google")
+  entries, err = vsafedb.Entries(store, kKey.Id, "google", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 1 {
     t.Errorf("Expected 1 entries, got %v", len(entries))
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, "biz")
+  entries, err = vsafedb.Entries(store, kKey.Id, "biz", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 0 {
     t.Errorf("Expected 0 entries, got %v", len(entries))
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, " eCond  one ")
+  entries, err = vsafedb.Entries(store, kKey.Id, " eCond  one ", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 1 {
     t.Errorf("Expected 1 entries, got %v", len(entries))
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, " Gain   SEco ")
+  entries, err = vsafedb.Entries(store, kKey.Id, " Gain   SEco ", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 1 {
     t.Errorf("Expected 1 entries, got %v", len(entries))
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, " hain   SEco ")
+  entries, err = vsafedb.Entries(store, kKey.Id, " hain   SEco ", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 0 {
     t.Errorf("Expected 0 entries, got %v", len(entries))
+  }
+  entries, err = vsafedb.Entries(store, kKey.Id, "", 17)
+  if err != nil {
+    t.Fatalf("Got error fetching entries: %v", err)
+  }
+  if len(entries) != 1 {
+    t.Errorf("Expected 1 entry, got %v", len(entries))
+  }
+  entries, err = vsafedb.Entries(store, kKey.Id, "", 16)
+  if err != nil {
+    t.Fatalf("Got error fetching entries: %v", err)
+  }
+  if len(entries) != 0 {
+    t.Errorf("Expected 0 enties, got %v", len(entries))
   }
 }
 
@@ -388,6 +467,38 @@ func (f FakeUserStore) UserById(
     return vsafedb.ErrNoSuchId
   }
   *u = *f[id - 1]
+  return nil
+}
+
+type FakeCategoryStore struct {
+  Category *vsafe.Category
+}
+
+func (f *FakeCategoryStore) CategoryById(
+    t db.Transaction, id int64, c *vsafe.Category) error {
+  if f.Category == nil || f.Category.Id != id {
+    return vsafedb.ErrNoSuchId
+  }
+  *c = *f.Category
+  return nil
+}
+
+func (f *FakeCategoryStore) UpdateCategory(
+    t db.Transaction, c *vsafe.Category) error {
+  if f.Category == nil || f.Category.Id != c.Id {
+    return nil
+  }
+  category := *c
+  f.Category = &category
+  return nil
+}
+
+func (f *FakeCategoryStore) RemoveCategory(
+    t db.Transaction, id int64) error {
+  if f.Category == nil || f.Category.Id != id {
+    return nil
+  }
+  f.Category = nil
   return nil
 }
 

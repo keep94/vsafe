@@ -5,6 +5,8 @@ package for_sqlite
 import (
   "github.com/keep94/appcommon/db"
   "github.com/keep94/appcommon/db/sqlite_db"
+  "github.com/keep94/appcommon/idset"
+  "github.com/keep94/gofunctional3/consume"
   "github.com/keep94/gofunctional3/functional"
   "github.com/keep94/gosqlite/sqlite"
   "github.com/keep94/vsafe"
@@ -19,10 +21,15 @@ const (
   kSQLAddUser = "insert into user (owner, name, key, checksum) values (?, ?, ?, ?)"
   kSQLUpdateUser = "update user set owner = ?, name = ?, key = ?, checksum = ? where id = ?"
   kSQLRemoveUser = "delete from user where name = ?"
-  kSQLEntryById = "select id, owner, url, title, desc, uname, password, special from entry where id = ?"
-  kSQLEntryByOwner = "select id, owner, url, title, desc, uname, password, special from entry where owner = ? order by id"
-  kSQLAddEntry = "insert into entry (owner, url, title, desc, uname, password, special) values (?, ?, ?, ?, ?, ?, ?)"
-  kSQLUpdateEntry = "update entry set owner = ?, url = ?, title = ?, desc = ?, uname = ?, password = ?, special = ? where id = ?"
+  kSQLAddCategory = "insert into category (owner, name) values (?, ?)"
+  kSQLCategoryByOwner = "select id, owner, name from category where owner = ? order by name"
+  kSQLCategoryById = "select id, owner, name from category where id = ?"
+  kSQLUpdateCategory = "update category set owner = ?, name = ? where id = ?"
+  kSQLRemoveCategory = "delete from category where id = ?"
+  kSQLEntryById = "select id, owner, url, title, desc, uname, password, special, categories from entry where id = ?"
+  kSQLEntryByOwner = "select id, owner, url, title, desc, uname, password, special, categories from entry where owner = ? order by id"
+  kSQLAddEntry = "insert into entry (owner, url, title, desc, uname, password, special, categories) values (?, ?, ?, ?, ?, ?, ?, ?)"
+  kSQLUpdateEntry = "update entry set owner = ?, url = ?, title = ?, desc = ?, uname = ?, password = ?, special = ?, categories = ? where id = ?"
   kSQLRemoveEntry = "delete from entry where id = ? and owner = ?"
 )
 
@@ -96,6 +103,57 @@ func (s Store) RemoveUser(
     t db.Transaction, name string) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
     return conn.Exec(kSQLRemoveUser, name)
+  })
+}
+
+func (s Store) AddCategory(
+    t db.Transaction, category *vsafe.Category) error {
+  return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
+    return sqlite_db.AddRow(
+        conn, &rawCategory{}, category, &category.Id, kSQLAddCategory)
+  })
+}
+
+func (s Store) CategoriesByOwner(
+    t db.Transaction, owner int64) ([]vsafe.Category, error) {
+  var result []vsafe.Category
+  consumer := consume.AppendTo(&result)
+  err := sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
+    return sqlite_db.ReadMultiple(
+        conn,
+        &rawCategory{},
+        consumer,
+        kSQLCategoryByOwner,
+        owner)
+  })
+  if err != nil {
+    return nil, err
+  }
+  return result, nil
+}
+
+func (s Store) CategoryById(
+    t db.Transaction, id int64, category *vsafe.Category) error {
+  return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
+    return sqlite_db.ReadSingle(
+        conn,
+        &rawCategory{},
+        vsafedb.ErrNoSuchId,
+        category,
+        kSQLCategoryById,
+        id)
+  })
+}
+
+func (s Store) UpdateCategory(t db.Transaction, category *vsafe.Category) error {
+  return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
+    return sqlite_db.UpdateRow(conn, &rawCategory{}, category, kSQLUpdateCategory)
+  })
+}
+
+func (s Store) RemoveCategory(t db.Transaction, id int64) error {
+  return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
+    return conn.Exec(kSQLRemoveCategory, id)
   })
 }
 
@@ -174,17 +232,35 @@ func (r *rawUser) Pair(ptr interface{}) {
   r.User = ptr.(*vsafe.User)
 }
 
+type rawCategory struct {
+  *vsafe.Category
+  sqlite_db.SimpleRow
+}
+
+func (r *rawCategory) Ptrs() []interface{} {
+  return []interface{} {&r.Id, &r.Owner, &r.Name}
+}
+
+func (r *rawCategory) Values() []interface{} {
+  return []interface{} {r.Owner, r.Name, r.Id}
+}
+
+func (r *rawCategory) Pair(ptr interface{}) {
+  r.Category = ptr.(*vsafe.Category)
+}
+
 type rawEntry struct {
   *vsafe.Entry
   rawUrl string
+  rawCategories string
 }
 
 func (r *rawEntry) Ptrs() []interface{} {
-  return []interface{} {&r.Id, &r.Owner, &r.rawUrl, &r.Title, &r.Desc, &r.UName, &r.Password, &r.Special}
+  return []interface{} {&r.Id, &r.Owner, &r.rawUrl, &r.Title, &r.Desc, &r.UName, &r.Password, &r.Special, &r.rawCategories}
 }
 
 func (r *rawEntry) Values() []interface{} {
-  return []interface{} {r.Owner, r.rawUrl, r.Title, r.Desc, r.UName, r.Password, r.Special, r.Id}
+  return []interface{} {r.Owner, r.rawUrl, r.Title, r.Desc, r.UName, r.Password, r.Special, r.rawCategories, r.Id}
 }
 
 func (r *rawEntry) Pair(ptr interface{}) {
@@ -192,6 +268,7 @@ func (r *rawEntry) Pair(ptr interface{}) {
 }
 
 func (r *rawEntry) Marshall() error {
+  r.rawCategories = string(r.Categories)
   if r.Url == nil {
     r.rawUrl = ""
   } else {
@@ -201,6 +278,7 @@ func (r *rawEntry) Marshall() error {
 }
 
 func (r *rawEntry) Unmarshall() error {
+  r.Categories = idset.IdSet(r.rawCategories)
   var err error
   if r.rawUrl == "" {
     r.Url = nil

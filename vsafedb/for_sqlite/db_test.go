@@ -45,6 +45,31 @@ func TestUserDupName(t *testing.T) {
   fixture.UserDupName(t, for_sqlite.New(db))
 }
 
+func TestCategoriesByOwner(t *testing.T) {
+  db := openDb(t)
+  defer closeDb(t, db)
+  fixture.CategoriesByOwner(t, for_sqlite.New(db))
+}
+
+func TestCategoryById(t *testing.T) {
+  db := openDb(t)
+  defer closeDb(t, db)
+  fixture.CategoryById(t, for_sqlite.New(db))
+}
+
+  
+func TestUpdateCategory(t *testing.T) {
+  db := openDb(t)
+  defer closeDb(t, db)
+  fixture.UpdateCategory(t, for_sqlite.New(db))
+}
+
+func TestRemoveCategory(t *testing.T) {
+  db := openDb(t)
+  defer closeDb(t, db)
+  fixture.RemoveCategory(t, for_sqlite.New(db))
+}
+
 func TestEntryById(t *testing.T) {
   db := openDb(t)
   defer closeDb(t, db)

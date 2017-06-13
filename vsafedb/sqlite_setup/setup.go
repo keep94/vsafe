@@ -15,7 +15,11 @@ func SetUpTables(conn *sqlite.Conn) error {
   if err != nil {
     return err
   }
-  err = conn.Exec("create table if not exists entry (id INTEGER PRIMARY KEY AUTOINCREMENT, owner INTEGER, url TEXT, title TEXT, desc TEXT, uname TEXT, password TEXT, special TEXT)")
+  err = conn.Exec("create table if not exists category (id INTEGER PRIMARY KEY AUTOINCREMENT, owner INTEGER, name TEXT)")
+  if err != nil {
+    return err
+  }
+  err = conn.Exec("create table if not exists entry (id INTEGER PRIMARY KEY AUTOINCREMENT, owner INTEGER, url TEXT, title TEXT, desc TEXT, uname TEXT, password TEXT, special TEXT, categories TEXT)")
   if err != nil {
     return err
   }
