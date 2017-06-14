@@ -77,10 +77,20 @@ type UpdateCategoryRunner interface {
   UpdateCategory(t db.Transaction, category *vsafe.Category) error
 }
 
+type SafeUpdateCategoryRunner interface {
+  CategoryByIdRunner
+  UpdateCategoryRunner
+}
+
 type RemoveCategoryRunner interface {
   // RemoveCategory removes a category with given id from
   // persistent storage.
   RemoveCategory(t db.Transaction, id int64) error
+}
+
+type SafeRemoveCategoryRunner interface {
+  CategoryByIdRunner
+  RemoveCategoryRunner
 }
 
 type AddEntryRunner interface {
@@ -120,6 +130,56 @@ type RemoveEntryRunner interface {
   // RemoveEntry removes an entry with given id and owner from persistent
   // storage.
   RemoveEntry(t db.Transaction, id, owner int64) error
+}
+
+// UpdateCategory updates a category name by id and owner. t must be non-nil.
+func UpdateCategory(
+    store SafeUpdateCategoryRunner,
+    t db.Transaction,
+    id, owner int64,
+    newName string) (oldName string, err error) {
+  if t == nil {
+    panic("t must be non-nil")
+  }
+  var category vsafe.Category
+  err = store.CategoryById(t, id, &category)
+  if err != nil {
+    return
+  }
+  if owner != category.Owner {
+    return "", ErrNoSuchId
+  }
+  lastName := category.Name
+  category.Name = newName
+  err = store.UpdateCategory(t, &category)
+  if err != nil {
+    return
+  }
+  return lastName, nil
+}
+
+// RemoveCategory removes a category by id and owner. t must be non-nil.
+func RemoveCategory(
+    store SafeRemoveCategoryRunner,
+    t db.Transaction,
+    id, owner int64) (oldName string, err error) {
+  if t == nil {
+    panic("t must be non-nil")
+  }
+  var category vsafe.Category
+  err = store.CategoryById(t, id, &category)
+  if err != nil {
+    return
+  }
+  if owner != category.Owner {
+    return "", ErrNoSuchId
+  }
+  lastName := category.Name
+  err = store.RemoveCategory(t, id)
+  if err != nil {
+    return
+  }
+  return lastName, nil
 }
 
 // AddEntry adds a new entry to persistent storage so that sensitive fields

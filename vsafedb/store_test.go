@@ -25,6 +25,71 @@ var (
   kTransaction db.Transaction = 0
 )  
 
+func TestUpdateCategory(t *testing.T) {
+  store := &FakeCategoryStore{
+      Category: &vsafe.Category{Id: 5, Owner: 3, Name: "five"}}
+  // wrong Id throws ErrNoSuchId
+  _, err := vsafedb.UpdateCategory(store, kTransaction, 2, 3, "updated")
+  if err != vsafedb.ErrNoSuchId {
+    t.Error("Expected ErrNoSuchId")
+  }
+
+  // Wrong owner throws ErrNoSuchId
+  _, err = vsafedb.UpdateCategory(store, kTransaction, 5, 2, "updated")
+  if err != vsafedb.ErrNoSuchId {
+    t.Error("Expected ErrNoSuchId")
+  }
+
+  if store.Category.Name != "five" {
+    t.Error("Expected category to remain unchanged")
+  }
+
+  oldName, err := vsafedb.UpdateCategory(
+      store, kTransaction, 5, 3, "updated")
+  if  err != nil {
+    t.Fatal("Got error updating category")
+  }
+  if oldName != "five" {
+    t.Error("Expected old name to be five")
+  }
+
+  if store.Category.Name != "updated" {
+    t.Error("Expected category to be updated")
+  }
+}
+
+func TestRemoveCategory(t *testing.T) {
+  store := &FakeCategoryStore{
+      Category: &vsafe.Category{Id: 5, Owner: 3, Name: "five"}}
+  // wrong Id throws ErrNoSuchId
+  _, err := vsafedb.RemoveCategory(store, kTransaction, 2, 3)
+  if err != vsafedb.ErrNoSuchId {
+    t.Error("Expected ErrNoSuchId")
+  }
+
+  // Wrong owner throws ErrNoSuchId
+  _, err = vsafedb.RemoveCategory(store, kTransaction, 5, 2)
+  if err != vsafedb.ErrNoSuchId {
+    t.Error("Expected ErrNoSuchId")
+  }
+
+  if store.Category.Name != "five" {
+    t.Error("Expected category to remain unchanged")
+  }
+
+  oldName, err := vsafedb.RemoveCategory(store, kTransaction, 5, 3)
+  if  err != nil {
+    t.Fatal("Got error removing category")
+  }
+  if oldName != "five" {
+    t.Error("Expected old name to be five")
+  }
+
+  if store.Category != nil {
+    t.Error("Expected category to be removed")
+  }
+}
+
 func TestAddEntry(t *testing.T) {
   var store FakeStore
   entry := *kAnEntry
@@ -388,6 +453,38 @@ func (f FakeUserStore) UserById(
     return vsafedb.ErrNoSuchId
   }
   *u = *f[id - 1]
+  return nil
+}
+
+type FakeCategoryStore struct {
+  Category *vsafe.Category
+}
+
+func (f *FakeCategoryStore) CategoryById(
+    t db.Transaction, id int64, c *vsafe.Category) error {
+  if f.Category == nil || f.Category.Id != id {
+    return vsafedb.ErrNoSuchId
+  }
+  *c = *f.Category
+  return nil
+}
+
+func (f *FakeCategoryStore) UpdateCategory(
+    t db.Transaction, c *vsafe.Category) error {
+  if f.Category == nil || f.Category.Id != c.Id {
+    return nil
+  }
+  category := *c
+  f.Category = &category
+  return nil
+}
+
+func (f *FakeCategoryStore) RemoveCategory(
+    t db.Transaction, id int64) error {
+  if f.Category == nil || f.Category.Id != id {
+    return nil
+  }
+  f.Category = nil
   return nil
 }
 
