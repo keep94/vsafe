@@ -13,6 +13,7 @@ import (
   "github.com/keep94/gosqlite/sqlite"
   "github.com/keep94/ramstore"
   "github.com/keep94/vsafe"
+  "github.com/keep94/vsafe/apps/vsafe/catedit"
   "github.com/keep94/vsafe/apps/vsafe/common"
   "github.com/keep94/vsafe/apps/vsafe/chpasswd"
   "github.com/keep94/vsafe/apps/vsafe/home"
@@ -75,6 +76,7 @@ func main() {
       "/auth/poll", pollHandler{})
   http.Handle(
       "/vsafe/", &authHandler{mux})
+  mux.Handle("/vsafe/catedit", &catedit.Handler{Store: kStore, Doer: kDoer})
   mux.Handle("/vsafe/chpasswd", &chpasswd.Handler{Store: kStore, Doer: kDoer})
   mux.Handle("/vsafe/home", &home.Handler{Store: kStore})
   mux.Handle("/vsafe/logout", &logout.Handler{})

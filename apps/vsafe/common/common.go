@@ -5,11 +5,13 @@ package common
 import (
   "errors"
   "github.com/gorilla/sessions"
+  "github.com/keep94/appcommon/http_util"
   "github.com/keep94/appcommon/session_util"
   "github.com/keep94/vsafe"
   "github.com/keep94/vsafe/vsafedb"
   "html/template"
   "net/http"
+  "strconv"
   "time"
 )
 
@@ -141,3 +143,13 @@ const (
   kKeyKey sessionKeyType = iota
 )
 
+// CatSelections converts a list of categories to selections for a combo box
+func CatSelections(cats []vsafe.Category) http_util.Selections {
+  result := make(http_util.Selections, len(cats))
+  for i := range result {
+    result[i] = http_util.Selection{
+        Value: strconv.FormatInt(cats[i].Id, 10),
+        Name: cats[i].Name}
+  }
+  return result
+}
