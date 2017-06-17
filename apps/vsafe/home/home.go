@@ -45,6 +45,9 @@ kTemplateSpec = `
 <a href="/vsafe/chpasswd">Change password</a>
 &nbsp;
 &nbsp;
+<a href="/vsafe/catedit">Edit categories</a>
+&nbsp;
+&nbsp;
 <a href="/vsafe/logout">Sign out</a>
 &nbsp;
 &nbsp;
