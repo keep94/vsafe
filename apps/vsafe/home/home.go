@@ -103,7 +103,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
   session := common.GetUserSession(r)
   sortBy := r.Form.Get("sort")
   id, _ := strconv.ParseInt(r.Form.Get("id"), 10, 64)
-  entries, err := vsafedb.Entries(h.Store, session.Key().Id, r.Form.Get("q"))
+  entries, err := vsafedb.Entries(h.Store, session.Key().Id, r.Form.Get("q"), 0)
   if err != nil {
     http_util.ReportError(w, "Error reading database", err)
     return

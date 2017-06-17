@@ -289,11 +289,11 @@ func TestEntries(t *testing.T) {
   var store FakeStore
   entry1 := vsafe.Entry{Title: " First", Url: yahoo, Desc: "the SeconD   oNe"}
   entry2 := vsafe.Entry{Title: "aGAiN  sEcond", Url: google, Desc: "a desc"}
-  entry3 := vsafe.Entry{Title: "third again", Desc: "foo bar"}
+  entry3 := vsafe.Entry{Title: "third again", Desc: "foo bar", Categories: "17"}
   vsafedb.AddEntry(&store, nil, kKey, &entry1)
   vsafedb.AddEntry(&store, nil, kKey, &entry2)
   vsafedb.AddEntry(&store, nil, kKey, &entry3)
-  entries, err := vsafedb.Entries(store, kKey.Id, "")
+  entries, err := vsafedb.Entries(store, kKey.Id, "", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
@@ -303,54 +303,68 @@ func TestEntries(t *testing.T) {
   if entries[0].Title != entry1.Title || entries[1].Title != entry2.Title || entries[2].Title != entry3.Title {
     t.Error("Returned 3 entries in wrong order")
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, "  first")
+  entries, err = vsafedb.Entries(store, kKey.Id, "  first", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 1 {
     t.Errorf("Expected 1 entries, got %v", len(entries))
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, "second  ")
+  entries, err = vsafedb.Entries(store, kKey.Id, "second  ", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 2 {
     t.Errorf("Expected 2 entries, got %v", len(entries))
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, "google")
+  entries, err = vsafedb.Entries(store, kKey.Id, "google", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 1 {
     t.Errorf("Expected 1 entries, got %v", len(entries))
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, "biz")
+  entries, err = vsafedb.Entries(store, kKey.Id, "biz", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 0 {
     t.Errorf("Expected 0 entries, got %v", len(entries))
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, " eCond  one ")
+  entries, err = vsafedb.Entries(store, kKey.Id, " eCond  one ", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 1 {
     t.Errorf("Expected 1 entries, got %v", len(entries))
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, " Gain   SEco ")
+  entries, err = vsafedb.Entries(store, kKey.Id, " Gain   SEco ", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 1 {
     t.Errorf("Expected 1 entries, got %v", len(entries))
   }
-  entries, err = vsafedb.Entries(store, kKey.Id, " hain   SEco ")
+  entries, err = vsafedb.Entries(store, kKey.Id, " hain   SEco ", 0)
   if err != nil {
     t.Fatalf("Got error fetching entries: %v", err)
   }
   if len(entries) != 0 {
     t.Errorf("Expected 0 entries, got %v", len(entries))
+  }
+  entries, err = vsafedb.Entries(store, kKey.Id, "", 17)
+  if err != nil {
+    t.Fatalf("Got error fetching entries: %v", err)
+  }
+  if len(entries) != 1 {
+    t.Errorf("Expected 1 entry, got %v", len(entries))
+  }
+  entries, err = vsafedb.Entries(store, kKey.Id, "", 16)
+  if err != nil {
+    t.Fatalf("Got error fetching entries: %v", err)
+  }
+  if len(entries) != 0 {
+    t.Errorf("Expected 0 enties, got %v", len(entries))
   }
 }
 

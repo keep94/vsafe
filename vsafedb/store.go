@@ -291,17 +291,25 @@ func EntryByIdWithEtag(
 // not there is a match. Whitespace within query and entry fields are
 // normalized to a single space before matching happens. The empty string
 // matches all entries.
+//
+// If catId is non-zero, returned entries must belong to corresponding
+// category in addition to matching query.
 func Entries(
     store EntriesByOwnerRunner,
     keyId int64,
-    query string) ([]*vsafe.Entry, error) {
+    query string,
+    catId int64) ([]*vsafe.Entry, error) {
+  filter := newEntryFilter(query)
+  if catId != 0 {
+    filter = functional.All(filter, catFilter(catId))
+  }
   var results []*vsafe.Entry
   if err := store.EntriesByOwner(
       nil,
       keyId,
       functional.FilterConsumer(
           consume.AppendPtrsTo(&results, nil),
-          newEntryFilter(query))); err != nil {
+          filter)); err != nil {
     return nil, err
   }
   return results, nil
@@ -346,6 +354,17 @@ func ChangePassword(
   }   
   return &user, nil
 }
+
+type catFilter int64
+
+func (f catFilter) Filter(ptr interface{}) error {
+  p := ptr.(*vsafe.Entry)
+  if p.Categories.Contains(int64(f)) {
+    return nil
+  }
+  return functional.Skipped
+}
+
 
 type entryFilter string
 
