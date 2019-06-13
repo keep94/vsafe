@@ -104,10 +104,15 @@ type authHandler struct {
 func (h *authHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
   user, _, err := authorizeSession(r, kSessionStore)
   if err == errNotLoggedIn {
+    redirectString := r.URL.String()
+    // Never have login page redirect to logout page
+    if redirectString == "/vsafe/logout" {
+      redirectString = "/vsafe/home"
+    }
     http_util.Redirect(
         w,
         r,
-        http_util.NewUrl("/auth/login", "prev", r.URL.String()).String())
+        http_util.NewUrl("/auth/login", "prev", redirectString).String())
     return
   }
   if err != nil {
@@ -155,7 +160,6 @@ func authorizeSession(
   return session.User, key, nil
 }
 
-// TODO
 func rootRedirect(w http.ResponseWriter, r *http.Request) {
   if r.URL.Path == "/" {
     http_util.Redirect(w, r, "/vsafe/home")
