@@ -3,7 +3,7 @@ package vsafedb_test
 import (
   "github.com/keep94/appcommon/db"
   "github.com/keep94/appcommon/kdf"
-  "github.com/keep94/gofunctional3/functional"
+  "github.com/keep94/goconsume"
   "github.com/keep94/vsafe"
   "github.com/keep94/vsafe/vsafedb"
   "net/url"
@@ -119,6 +119,7 @@ func TestAddEntry(t *testing.T) {
   origEntry := *kAnEntry
   origEntry.Id = 1
   origEntry.Owner = kKey.Id
+  origEntry.Etag = readEntry.Etag
   if readEntry != origEntry {
     t.Errorf("Expected %v, got %v", origEntry, readEntry)
   }
@@ -152,6 +153,7 @@ func TestUpdateEntry(t *testing.T) {
     t.Fatalf("Error reading store: %v", err)
   }
   origEntry.Owner = kKey.Id
+  origEntry.Etag = readEntry.Etag
   if readEntry != origEntry {
     t.Errorf("Expected %v, got %v", origEntry, readEntry)
   }
@@ -164,19 +166,18 @@ func TestUpdateEntryWithEtag(t *testing.T) {
   if err != nil {
     t.Fatalf("Error saving original entry %v", err)
   }
-  var origEntryWithEtag vsafe.EntryWithEtag
-  if err := vsafedb.EntryByIdWithEtag(
+  var origEntryWithEtag vsafe.Entry
+  if err := vsafedb.EntryById(
       store, nil, newId, kKey, &origEntryWithEtag); err != nil {
     t.Fatalf("Error reading original entry %v", err)
   }
-  update := functional.NewFilterer(changeToAnEntry)
   if err := vsafedb.UpdateEntryWithEtag(
       store,
       kTransaction,
       newId,
       origEntryWithEtag.Etag,
       kKey,
-      update); err != nil {
+      changeToAnEntry); err != nil {
     t.Fatalf("Error updating store: %v", err)
   }
   var readEntry vsafe.Entry
@@ -186,6 +187,7 @@ func TestUpdateEntryWithEtag(t *testing.T) {
   entry := *kAnEntry
   entry.Owner = readEntry.Owner
   entry.Id = readEntry.Id
+  entry.Etag = readEntry.Etag
   if readEntry != entry {
     t.Errorf("Expected %v, got %v", entry, readEntry)
   }
@@ -198,17 +200,17 @@ func TestUpdateEntryConcurrent(t *testing.T) {
   if err != nil {
     t.Fatalf("Error saving original entry %v", err)
   }
-  var origEntryWithEtag vsafe.EntryWithEtag
-  if err := vsafedb.EntryByIdWithEtag(
+  var origEntryWithEtag vsafe.Entry
+  if err := vsafedb.EntryById(
       store, nil, newId, kKey, &origEntryWithEtag); err != nil {
     t.Fatalf("Error reading original entry %v", err)
   }
-  update := functional.NewFilterer(changeToAnEntry)
-  updateSkipped := functional.NewFilterer(func(ptr interface{}) error {
+  update := changeToAnEntry
+  updateSkipped := func(ptr interface{}) bool {
     entryPtr := ptr.(*vsafe.Entry)
     *entryPtr = *kAnEntry
-    return functional.Skipped
-  })
+    return false
+  }
   // An update that skips shouldn't throw an error even if etag is wrong
   if err := vsafedb.UpdateEntryWithEtag(
       store,
@@ -232,7 +234,7 @@ func TestUpdateEntryConcurrent(t *testing.T) {
   if err := vsafedb.EntryById(store, nil, newId, kKey, &readEntry); err != nil {
     t.Fatalf("Error reading store: %v", err)
   }
-  if readEntry != origEntryWithEtag.Entry {
+  if readEntry != origEntryWithEtag {
     t.Errorf("Entry should not have been updated")
   }
 }
@@ -244,12 +246,11 @@ func TestUpdateEntryWithEtagBadKey(t *testing.T) {
   if err != nil {
     t.Fatalf("Error saving original entry %v", err)
   }
-  var origEntryWithEtag vsafe.EntryWithEtag
-  if err := vsafedb.EntryByIdWithEtag(
+  var origEntryWithEtag vsafe.Entry
+  if err := vsafedb.EntryById(
       store, nil, newId, kKey, &origEntryWithEtag); err != nil {
     t.Fatalf("Error readingoriginal entry %v", err)
   }
-  update := functional.NewFilterer(changeToAnEntry)
   badKey := *kKey
   badKey.Id++
   if err := vsafedb.UpdateEntryWithEtag(
@@ -258,14 +259,14 @@ func TestUpdateEntryWithEtagBadKey(t *testing.T) {
       newId,
       origEntryWithEtag.Etag,
       &badKey,
-      update); err != vsafedb.ErrNoSuchId {
+      changeToAnEntry); err != vsafedb.ErrNoSuchId {
     t.Errorf("Expected ErrNoSuchId, got %v", err)
   }
   var readEntry vsafe.Entry
   if err := vsafedb.EntryById(store, nil, newId, kKey, &readEntry); err != nil {
     t.Fatalf("Error reading store: %v", err)
   }
-  if readEntry != origEntryWithEtag.Entry {
+  if readEntry != origEntryWithEtag {
     t.Errorf("Entry should not have been updated")
   }
 }
@@ -522,36 +523,26 @@ func (f FakeStore) EntryById(t db.Transaction, id int64, e *vsafe.Entry) error {
     return vsafedb.ErrNoSuchId
   }
   *e = *f[id - 1]
-  return nil
-}
-
-func (f FakeStore) EntryByIdWithEtag(
-    t db.Transaction, id int64, e *vsafe.EntryWithEtag) error {
-// Only computes etag on the string fields
-  if int(id) > len(f) {
-    return vsafedb.ErrNoSuchId
-  }
-  e.Entry = *f[id - 1]
   e.Etag = 57
   return nil
 }
 
 func (f FakeStore) EntriesByOwner(
-    t db.Transaction, owner int64, consumer functional.Consumer) error {
-  s := functional.NewStreamFromPtrs(f, nil)
-  s = functional.Filter(functional.NewFilterer(func(ptr interface{}) error {
-    p := ptr.(*vsafe.Entry)
-    if p.Owner == owner {
-      return nil
+    t db.Transaction, owner int64, consumer goconsume.Consumer) error {
+  for _, entry := range f {
+    if !consumer.CanConsume() {
+      break
     }
-    return functional.Skipped
-  }),
-  s)
-  return consumer.Consume(s)
+    if entry.Owner != owner {
+      continue
+    }
+    consumer.Consume(entry)
+  }
+  return nil
 }
 
-func changeToAnEntry(ptr interface{}) error {
+func changeToAnEntry(ptr interface{}) bool {
   entryPtr := ptr.(*vsafe.Entry)
   *entryPtr = *kAnEntry
-  return nil
+  return true
 }

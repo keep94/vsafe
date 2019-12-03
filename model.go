@@ -161,20 +161,8 @@ type Entry struct {
   Special string
   // Categories to which this entry belongs
   Categories idset.IdSet
-}
-
-// Read an EntryWithEtag instead of an Entry to collect the entry's etag
-type EntryWithEtag struct {
-  Entry
+  // Etag
   Etag uint64
-}
-
-func (e *EntryWithEtag) GetPtr() interface{} {
-  return &e.Entry
-}
-
-func (e *EntryWithEtag) SetEtag(etag uint64) {
-  e.Etag = etag
 }
 
 // Encrypt encrypts sensitive fields in this instance using key namely

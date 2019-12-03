@@ -6,7 +6,7 @@ import (
   "github.com/keep94/appcommon/db"
   "github.com/keep94/appcommon/http_util"
   "github.com/keep94/appcommon/idset"
-  "github.com/keep94/gofunctional3/functional"
+  "github.com/keep94/goconsume"
   "github.com/keep94/vsafe"
   "github.com/keep94/vsafe/apps/vsafe/common"
   "github.com/keep94/vsafe/vsafedb"
@@ -117,7 +117,7 @@ type Store interface {
   vsafedb.AddEntryRunner
   vsafedb.UpdateEntryRunner
   vsafedb.RemoveEntryRunner
-  vsafedb.EntryByIdWithEtagRunner
+  vsafedb.EntryByIdRunner
   vsafedb.CategoriesByOwnerRunner
 }
 
@@ -161,7 +161,7 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
   } else if http_util.HasParam(r.Form, "cancel") {
     // Do nothing
   } else {
-    var mutation functional.Filterer
+    var mutation goconsume.FilterFunc
     mutation, err = toEntry(r.Form, catMap)
     if err == nil {
       if isIdValid(id) {
@@ -173,7 +173,7 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
       } else {
         var newId int64
         var entry vsafe.Entry
-        mutation.Filter(&entry)
+        mutation(&entry)
         newId, err = vsafedb.AddEntry(h.Store, nil, session.Key(), &entry)
         if err == nil {
           id = newId
@@ -210,8 +210,8 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
   }
   catRows := toCatRows(categories)
   if isIdValid(id) {
-    var entryWithEtag vsafe.EntryWithEtag
-    err := vsafedb.EntryByIdWithEtag(
+    var entryWithEtag vsafe.Entry
+    err := vsafedb.EntryById(
         h.Store, nil, id, session.Key(), &entryWithEtag)
     if err == vsafedb.ErrNoSuchId {
       fmt.Fprintln(w, "No entry found.")
@@ -221,7 +221,7 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
       http_util.ReportError(w, "Error reading database.", err)
       return
     }
-    catMap, err := entryWithEtag.Entry.Categories.Map()
+    catMap, err := entryWithEtag.Categories.Map()
     if err != nil {
       fmt.Fprintln(w, "Category data for entry corrupt.")
       return
@@ -230,7 +230,7 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
         w,
         kTemplate,
         newView(
-            fromEntry(&entryWithEtag.Entry, entryWithEtag.Etag),
+            fromEntry(&entryWithEtag),
             true,
             session.Key().Id,
             catRows,
@@ -266,7 +266,7 @@ func withId(url *url.URL, id int64) *url.URL {
   return &result
 }
 
-func toEntry(values url.Values, catMap map[int64]bool) (mutation functional.Filterer, err error) {
+func toEntry(values url.Values, catMap map[int64]bool) (mutation goconsume.FilterFunc, err error) {
   if len(catMap) > kMaxCategories {
     err = kErrTooManyCategories
     return
@@ -281,7 +281,7 @@ func toEntry(values url.Values, catMap map[int64]bool) (mutation functional.Filt
   password := values.Get("password")
   special := values.Get("special")
   categories := idset.New(catMap)
-  mutation = functional.NewFilterer(func(ptr interface{}) error {
+  mutation = func(ptr interface{}) bool {
 
     // We have to skip if nothing changed. Otherwise the etag will change
     // when we update even if we don't change anything. This is because
@@ -316,15 +316,12 @@ func toEntry(values url.Values, catMap map[int64]bool) (mutation functional.Filt
       entryPtr.Categories = categories
       changed = true
     }
-    if changed {
-      return nil
-    }
-    return functional.Skipped
-  })
+    return changed
+  }
   return
 }
 
-func fromEntry(entry *vsafe.Entry, tag uint64) url.Values {
+func fromEntry(entry *vsafe.Entry) url.Values {
   result := make(url.Values)
   result.Set("url", safeUrlString(entry.Url))
   result.Set("title", entry.Title)
@@ -332,7 +329,7 @@ func fromEntry(entry *vsafe.Entry, tag uint64) url.Values {
   result.Set("uname", entry.UName)
   result.Set("password", entry.Password)
   result.Set("special", entry.Special)
-  result.Set("etag", strconv.FormatUint(tag, 10))
+  result.Set("etag", strconv.FormatUint(entry.Etag, 10))
   return result
 }
 

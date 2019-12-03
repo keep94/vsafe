@@ -5,9 +5,9 @@ package for_sqlite
 import (
   "github.com/keep94/appcommon/db"
   "github.com/keep94/appcommon/db/sqlite_db"
+  "github.com/keep94/appcommon/db/sqlite_rw"
   "github.com/keep94/appcommon/idset"
-  "github.com/keep94/gofunctional3/consume"
-  "github.com/keep94/gofunctional3/functional"
+  "github.com/keep94/goconsume"
   "github.com/keep94/gosqlite/sqlite"
   "github.com/keep94/vsafe"
   "github.com/keep94/vsafe/vsafedb"
@@ -51,18 +51,18 @@ func ConnNew(conn *sqlite.Conn) Store {
 func (s Store) AddUser(
     t db.Transaction, user *vsafe.User) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.AddRow(conn, &rawUser{}, user, &user.Id, kSQLAddUser)
+    return sqlite_rw.AddRow(
+        conn, (&rawUser{}).init(user), &user.Id, kSQLAddUser)
   })
 }
 
 func (s Store) UserById(
     t db.Transaction, id int64, user *vsafe.User) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.ReadSingle(
+    return sqlite_rw.ReadSingle(
         conn,
-        &rawUser{},
+        (&rawUser{}).init(user),
         vsafedb.ErrNoSuchId,
-        user,
         kSQLUserById,
         id)
   })
@@ -71,22 +71,21 @@ func (s Store) UserById(
 func (s Store) UserByName(
     t db.Transaction, name string, user *vsafe.User) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.ReadSingle(
+    return sqlite_rw.ReadSingle(
         conn,
-        &rawUser{},
+        (&rawUser{}).init(user),
         vsafedb.ErrNoSuchId,
-        user,
         kSQLUserByName,
         name)
   })
 }
 
 func (s Store) Users(
-    t db.Transaction, consumer functional.Consumer) error {
+    t db.Transaction, consumer goconsume.Consumer) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.ReadMultiple(
+    return sqlite_rw.ReadMultiple(
         conn,
-        &rawUser{},
+        (&rawUser{}).init(&vsafe.User{}),
         consumer,
         kSQLUsers)
   })
@@ -95,7 +94,8 @@ func (s Store) Users(
 func (s Store) UpdateUser(
     t db.Transaction, user *vsafe.User) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.UpdateRow(conn, &rawUser{}, user, kSQLUpdateUser)
+    return sqlite_rw.UpdateRow(
+        conn, (&rawUser{}).init(user), kSQLUpdateUser)
   })
 }
 
@@ -109,19 +109,19 @@ func (s Store) RemoveUser(
 func (s Store) AddCategory(
     t db.Transaction, category *vsafe.Category) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.AddRow(
-        conn, &rawCategory{}, category, &category.Id, kSQLAddCategory)
+    return sqlite_rw.AddRow(
+        conn, (&rawCategory{}).init(category), &category.Id, kSQLAddCategory)
   })
 }
 
 func (s Store) CategoriesByOwner(
     t db.Transaction, owner int64) ([]vsafe.Category, error) {
   var result []vsafe.Category
-  consumer := consume.AppendTo(&result)
+  consumer := goconsume.AppendTo(&result)
   err := sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.ReadMultiple(
+    return sqlite_rw.ReadMultiple(
         conn,
-        &rawCategory{},
+        (&rawCategory{}).init(&vsafe.Category{}),
         consumer,
         kSQLCategoryByOwner,
         owner)
@@ -135,11 +135,10 @@ func (s Store) CategoriesByOwner(
 func (s Store) CategoryById(
     t db.Transaction, id int64, category *vsafe.Category) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.ReadSingle(
+    return sqlite_rw.ReadSingle(
         conn,
-        &rawCategory{},
+        (&rawCategory{}).init(category),
         vsafedb.ErrNoSuchId,
-        category,
         kSQLCategoryById,
         id)
   })
@@ -147,7 +146,8 @@ func (s Store) CategoryById(
 
 func (s Store) UpdateCategory(t db.Transaction, category *vsafe.Category) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.UpdateRow(conn, &rawCategory{}, category, kSQLUpdateCategory)
+    return sqlite_rw.UpdateRow(
+        conn, (&rawCategory{}).init(category), kSQLUpdateCategory)
   })
 }
 
@@ -160,43 +160,29 @@ func (s Store) RemoveCategory(t db.Transaction, id int64) error {
 func (s Store) AddEntry(
     t db.Transaction, entry *vsafe.Entry) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.AddRow(
-        conn, &rawEntry{}, entry, &entry.Id, kSQLAddEntry)
+    return sqlite_rw.AddRow(
+        conn, (&rawEntry{}).init(entry), &entry.Id, kSQLAddEntry)
   })
 }
 
 func (s Store) EntryById(
     t db.Transaction, id int64, entry *vsafe.Entry) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.ReadSingle(
+    return sqlite_rw.ReadSingle(
         conn,
-        &rawEntry{},
+        (&rawEntry{}).init(entry),
         vsafedb.ErrNoSuchId,
-        entry,
-        kSQLEntryById,
-        id)
-  })
-}
-
-func (s Store) EntryByIdWithEtag(
-    t db.Transaction, id int64, entry *vsafe.EntryWithEtag) error {
-  return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.ReadSingle(
-        conn,
-        &rawEntry{},
-        vsafedb.ErrNoSuchId,
-        entry,
         kSQLEntryById,
         id)
   })
 }
 
 func (s Store) EntriesByOwner(
-    t db.Transaction, owner int64, consumer functional.Consumer) error {
+    t db.Transaction, owner int64, consumer goconsume.Consumer) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.ReadMultiple(
+    return sqlite_rw.ReadMultiple(
         conn,
-        &rawEntry{},
+        (&rawEntry{}).init(&vsafe.Entry{}),
         consumer,
         kSQLEntryByOwner,
         owner)
@@ -205,7 +191,8 @@ func (s Store) EntriesByOwner(
 
 func (s Store) UpdateEntry(t db.Transaction, entry *vsafe.Entry) error {
   return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-    return sqlite_db.UpdateRow(conn, &rawEntry{}, entry, kSQLUpdateEntry)
+    return sqlite_rw.UpdateRow(
+        conn, (&rawEntry{}).init(entry), kSQLUpdateEntry)
   })
 }
 
@@ -217,7 +204,12 @@ func (s Store) RemoveEntry(t db.Transaction, id, owner int64) error {
 
 type rawUser struct {
   *vsafe.User
-  sqlite_db.SimpleRow
+  sqlite_rw.SimpleRow
+}
+
+func (r *rawUser) init(bo *vsafe.User) *rawUser {
+  r.User = bo
+  return r
 }
 
 func (r *rawUser) Ptrs() []interface{} {
@@ -228,13 +220,18 @@ func (r *rawUser) Values() []interface{} {
   return []interface{} {r.Owner, r.Name, r.Key, r.Checksum, r.Id}
 }
 
-func (r *rawUser) Pair(ptr interface{}) {
-  r.User = ptr.(*vsafe.User)
+func (r *rawUser) ValuePtr() interface{} {
+  return r.User
 }
 
 type rawCategory struct {
   *vsafe.Category
-  sqlite_db.SimpleRow
+  sqlite_rw.SimpleRow
+}
+
+func (r *rawCategory) init(bo *vsafe.Category) *rawCategory {
+  r.Category = bo
+  return r
 }
 
 func (r *rawCategory) Ptrs() []interface{} {
@@ -245,14 +242,19 @@ func (r *rawCategory) Values() []interface{} {
   return []interface{} {r.Owner, r.Name, r.Id}
 }
 
-func (r *rawCategory) Pair(ptr interface{}) {
-  r.Category = ptr.(*vsafe.Category)
+func (r *rawCategory) ValuePtr() interface{} {
+  return r.Category
 }
 
 type rawEntry struct {
   *vsafe.Entry
   rawUrl string
   rawCategories string
+}
+
+func (r *rawEntry) init(bo *vsafe.Entry) *rawEntry {
+  r.Entry = bo
+  return r
 }
 
 func (r *rawEntry) Ptrs() []interface{} {
@@ -263,8 +265,12 @@ func (r *rawEntry) Values() []interface{} {
   return []interface{} {r.Owner, r.rawUrl, r.Title, r.Desc, r.UName, r.Password, r.Special, r.rawCategories, r.Id}
 }
 
-func (r *rawEntry) Pair(ptr interface{}) {
-  r.Entry = ptr.(*vsafe.Entry)
+func (r *rawEntry) ValuePtr() interface{} {
+  return r.Entry
+}
+
+func (r *rawEntry) SetEtag(etag uint64) {
+  r.Etag = etag
 }
 
 func (r *rawEntry) Marshall() error {
@@ -278,8 +284,8 @@ func (r *rawEntry) Marshall() error {
 }
 
 func (r *rawEntry) Unmarshall() error {
-  r.Categories = idset.IdSet(r.rawCategories)
   var err error
+  r.Categories = idset.IdSet(r.rawCategories)
   if r.rawUrl == "" {
     r.Url = nil
   } else {

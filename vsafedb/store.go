@@ -6,8 +6,7 @@ import (
   "errors"
   "github.com/keep94/appcommon/db"
   "github.com/keep94/appcommon/str_util"
-  "github.com/keep94/gofunctional3/consume"
-  "github.com/keep94/gofunctional3/functional"
+  "github.com/keep94/goconsume"
   "github.com/keep94/vsafe"
   "sort"
   "strings"
@@ -37,7 +36,7 @@ type UserByNameRunner interface {
 
 type UsersRunner interface {
   // Users retrieves all users from persistent storage ordered by name.
-  Users(t db.Transaction, consumer functional.Consumer) error
+  Users(t db.Transaction, consumer goconsume.Consumer) error
 }
 
 type UpdateUserRunner interface {
@@ -103,17 +102,10 @@ type EntryByIdRunner interface {
   EntryById(t db.Transaction, id int64, entry *vsafe.Entry) error
 }
 
-type EntryByIdWithEtagRunner interface {
-  // EntryByIdWithEtag retrieves an entry by id along with its etag
-  // from persistent storage.
-  EntryByIdWithEtag(
-      t db.Transaction, id int64, entry *vsafe.EntryWithEtag) error
-}
-
 type EntriesByOwnerRunner interface {
   // EntriesByOwner retrieves all entries with a particular owner from
   // persistent storage ordered by Id.
-  EntriesByOwner(t db.Transaction, owner int64, consumer functional.Consumer) error
+  EntriesByOwner(t db.Transaction, owner int64, consumer goconsume.Consumer) error
 }
 
 type UpdateEntryRunner interface {
@@ -123,7 +115,7 @@ type UpdateEntryRunner interface {
 
 type SafeUpdateEntryRunner interface {
   UpdateEntryRunner
-  EntryByIdWithEtagRunner
+  EntryByIdRunner
 }
 
 type RemoveEntryRunner interface {
@@ -209,27 +201,24 @@ func UpdateEntryWithEtag(
     id int64,
     tag uint64,
     key *vsafe.Key,
-    update functional.Filterer) error {
+    update goconsume.FilterFunc) error {
   if t == nil {
     panic("Transaction must be non-nil")
   }
-  var origEntry vsafe.EntryWithEtag
-  err := EntryByIdWithEtag(store, t, id, key, &origEntry)
+  var origEntry vsafe.Entry
+  err := EntryById(store, t, id, key, &origEntry)
   if err != nil {
    return err
   }
-  err = update.Filter(&origEntry.Entry)
-  if err == functional.Skipped {
+  etag := origEntry.Etag
+  if !update(&origEntry) {
     return nil
   }
-  if err != nil {
-    return err
-  }
-  if tag != origEntry.Etag {
+  if tag != etag {
     return ErrConcurrentModification
   }
   origEntry.Id = id
-  return UpdateEntry(store, t, key, &origEntry.Entry)
+  return UpdateEntry(store, t, key, &origEntry)
 }
 
 // UpdateEntry updates an entry in persistent storage so that sensitive fields
@@ -267,23 +256,6 @@ func EntryById(
   return decryptHelper(key, entry)
 }
 
-// EntryByIdWithEtag retrieves an entry by its id along with its etag
-// from persistent storage while handling decryption of sensitive fields.
-// If the Id of the provided key does not match the Owner field of
-// fetched entry, that is the current user does not own the entry
-// being fetched, EntryById returns ErrNoSuchId.
-func EntryByIdWithEtag(
-    store EntryByIdWithEtagRunner,
-    t db.Transaction,
-    id int64,
-    key *vsafe.Key,
-    entry *vsafe.EntryWithEtag) (err error) {
-  if err = store.EntryByIdWithEtag(t, id, entry); err != nil {
-    return
-  }
-  return decryptHelper(key, &entry.Entry)
-}
-
 // Entries returns a new slice containing entries encrypted with keyId and
 // matching query and orders them by Id. It does not decrypt the sensitive
 // fields within the fetched entries. query is searched for within url,
@@ -301,14 +273,14 @@ func Entries(
     catId int64) ([]*vsafe.Entry, error) {
   filter := newEntryFilter(query)
   if catId != 0 {
-    filter = functional.All(filter, catFilter(catId))
+    filter = goconsume.All(filter, newCatFilter(catId))
   }
   var results []*vsafe.Entry
   if err := store.EntriesByOwner(
       nil,
       keyId,
-      functional.FilterConsumer(
-          consume.AppendPtrsTo(&results, nil),
+      goconsume.Filter(
+          goconsume.AppendPtrsTo(&results),
           filter)); err != nil {
     return nil, err
   }
@@ -355,43 +327,35 @@ func ChangePassword(
   return &user, nil
 }
 
-type catFilter int64
-
-func (f catFilter) Filter(ptr interface{}) error {
-  p := ptr.(*vsafe.Entry)
-  if p.Categories.Contains(int64(f)) {
-    return nil
+func newCatFilter(cat int64) goconsume.FilterFunc {
+  return func(ptr interface{}) bool {
+    p := ptr.(*vsafe.Entry)
+    return p.Categories.Contains(cat)
   }
-  return functional.Skipped
 }
 
-
-type entryFilter string
-
-func newEntryFilter(s string) functional.Filterer {
+func newEntryFilter(s string) goconsume.FilterFunc {
   s = str_util.Normalize(s)
   if s == "" {
-    return functional.All()
+    return goconsume.All()
   }
-  return entryFilter(s)
-}
-
-func (f entryFilter) Filter(ptr interface{}) error {
-  p := ptr.(*vsafe.Entry)
-  pattern := string(f)
-  if p.Url != nil {
-    str := str_util.Normalize(p.Url.String())
-    if strings.Index(str, pattern) != -1 {
-      return nil
+  pattern := s
+  return func(ptr interface{}) bool {
+    p := ptr.(*vsafe.Entry)
+    if p.Url != nil {
+      str := str_util.Normalize(p.Url.String())
+      if strings.Index(str, pattern) != -1 {
+        return true
+      }
     }
+    if strings.Index(str_util.Normalize(p.Title), pattern) != -1 {
+      return true
+    }
+    if strings.Index(str_util.Normalize(p.Desc), pattern) != -1 {
+      return true
+    }
+    return false
   }
-  if strings.Index(str_util.Normalize(p.Title), pattern) != -1 {
-    return nil
-  }
-  if strings.Index(str_util.Normalize(p.Desc), pattern) != -1 {
-    return nil
-  }
-  return functional.Skipped
 }
 
 type sortByTitle struct {

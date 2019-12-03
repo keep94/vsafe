@@ -4,7 +4,7 @@ import (
   "flag"
   "fmt"
   "github.com/keep94/appcommon/db/sqlite_db"
-  "github.com/keep94/gofunctional3/consume"
+  "github.com/keep94/goconsume"
   "github.com/keep94/gosqlite/sqlite"
   "github.com/keep94/vsafe"
   "github.com/keep94/vsafe/vsafedb"
@@ -165,7 +165,7 @@ func initDb(dbase *sqlite_db.Db) (store for_sqlite.Store, ok bool) {
 
 func listUsers(store vsafedb.UsersRunner) bool {
   var users []*vsafe.User
-  if err := store.Users(nil, consume.AppendPtrsTo(&users, nil)); err != nil {
+  if err := store.Users(nil, goconsume.AppendPtrsTo(&users)); err != nil {
     fmt.Printf("Error fetching users - %v\n", err)
     return false
   }

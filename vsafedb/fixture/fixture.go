@@ -3,7 +3,7 @@
 package fixture
 
 import (
-  "github.com/keep94/gofunctional3/consume"
+  "github.com/keep94/goconsume"
   "github.com/keep94/vsafe"
   "github.com/keep94/vsafe/vsafedb"
   "net/url"
@@ -159,7 +159,7 @@ func Users(t *testing.T, store UsersStore) {
   var first, second vsafe.User
   var users []*vsafe.User
   createUsers(t, store, &first, &second)
-  if err := store.Users(nil, consume.AppendPtrsTo(&users, nil)); err != nil {
+  if err := store.Users(nil, goconsume.AppendPtrsTo(&users)); err != nil {
     t.Fatalf("Got error reading database: %v", err)
   }
   assertUserEqual(t, &second, users[0])
@@ -291,7 +291,7 @@ func EntriesByOwner(t *testing.T, store EntriesByOwnerStore) {
     t.Fatalf("Got error adding entry %v", err)
   }
   var entries []*vsafe.Entry
-  if err := store.EntriesByOwner(nil, kOwner, consume.AppendPtrsTo(&entries, nil)); err != nil {
+  if err := store.EntriesByOwner(nil, kOwner, goconsume.AppendPtrsTo(&entries)); err != nil {
     t.Fatalf("Got error reading database by id: %v", err)
   }
   if len(entries) != 2 {
@@ -433,8 +433,10 @@ func assertUserEqual(t *testing.T, expected, actual *vsafe.User) {
 }
 
 func assertEntryEqual(t *testing.T, expected, actual *vsafe.Entry) {
-  if !reflect.DeepEqual(expected, actual) {
-    t.Errorf("Expected %v, got %v", expected, actual)
+  nexpected := *expected
+  nexpected.Etag = actual.Etag
+  if !reflect.DeepEqual(&nexpected, actual) {
+    t.Errorf("Expected %v, got %v", &nexpected, actual)
   }
 }
 
