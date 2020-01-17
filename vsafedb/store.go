@@ -279,9 +279,10 @@ func Entries(
   if err := store.EntriesByOwner(
       nil,
       keyId,
-      goconsume.Filter(
+      goconsume.ModFilter(
           goconsume.AppendPtrsTo(&results),
-          filter)); err != nil {
+          filter,
+          (*vsafe.Entry)(nil))); err != nil {
     return nil, err
   }
   return results, nil
