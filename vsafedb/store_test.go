@@ -536,7 +536,8 @@ func (f FakeStore) EntriesByOwner(
     if entry.Owner != owner {
       continue
     }
-    consumer.Consume(entry)
+    entryCopy := *entry
+    consumer.Consume(&entryCopy)
   }
   return nil
 }
