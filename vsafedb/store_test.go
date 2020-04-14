@@ -206,8 +206,7 @@ func TestUpdateEntryConcurrent(t *testing.T) {
     t.Fatalf("Error reading original entry %v", err)
   }
   update := changeToAnEntry
-  updateSkipped := func(ptr interface{}) bool {
-    entryPtr := ptr.(*vsafe.Entry)
+  updateSkipped := func(entryPtr *vsafe.Entry) bool {
     *entryPtr = *kAnEntry
     return false
   }
@@ -542,8 +541,7 @@ func (f FakeStore) EntriesByOwner(
   return nil
 }
 
-func changeToAnEntry(ptr interface{}) bool {
-  entryPtr := ptr.(*vsafe.Entry)
+func changeToAnEntry(entryPtr *vsafe.Entry) bool {
   *entryPtr = *kAnEntry
   return true
 }

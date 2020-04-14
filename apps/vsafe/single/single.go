@@ -6,7 +6,6 @@ import (
   "github.com/keep94/appcommon/db"
   "github.com/keep94/appcommon/http_util"
   "github.com/keep94/appcommon/idset"
-  "github.com/keep94/goconsume"
   "github.com/keep94/vsafe"
   "github.com/keep94/vsafe/apps/vsafe/common"
   "github.com/keep94/vsafe/vsafedb"
@@ -161,7 +160,7 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
   } else if http_util.HasParam(r.Form, "cancel") {
     // Do nothing
   } else {
-    var mutation goconsume.FilterFunc
+    var mutation vsafe.EntryUpdater
     mutation, err = toEntry(r.Form, catMap)
     if err == nil {
       if isIdValid(id) {
@@ -266,7 +265,7 @@ func withId(url *url.URL, id int64) *url.URL {
   return &result
 }
 
-func toEntry(values url.Values, catMap map[int64]bool) (mutation goconsume.FilterFunc, err error) {
+func toEntry(values url.Values, catMap map[int64]bool) (mutation vsafe.EntryUpdater, err error) {
   if len(catMap) > kMaxCategories {
     err = kErrTooManyCategories
     return
@@ -281,12 +280,11 @@ func toEntry(values url.Values, catMap map[int64]bool) (mutation goconsume.Filte
   password := values.Get("password")
   special := values.Get("special")
   categories := idset.New(catMap)
-  mutation = func(ptr interface{}) bool {
+  mutation = func(entryPtr *vsafe.Entry) bool {
 
     // We have to skip if nothing changed. Otherwise the etag will change
     // when we update even if we don't change anything. This is because
     // of the random seed added to the encryption.
-    entryPtr := ptr.(*vsafe.Entry)
     changed := false
     if safeUrlString(entryPtr.Url) != safeUrlString(url) {
       entryPtr.Url = url

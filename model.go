@@ -199,3 +199,6 @@ func (e *Entry) Decrypt(key *Key) (err error) {
   }
   return
 }
+
+// EntryUpdater updates an entry in place and returns true on success.
+type EntryUpdater func(*Entry) bool

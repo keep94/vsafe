@@ -201,7 +201,7 @@ func UpdateEntryWithEtag(
     id int64,
     tag uint64,
     key *vsafe.Key,
-    update goconsume.FilterFunc) error {
+    update vsafe.EntryUpdater) error {
   if t == nil {
     panic("Transaction must be non-nil")
   }
