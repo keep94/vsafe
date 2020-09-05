@@ -2,12 +2,12 @@
 package static
 
 import (
-  "github.com/keep94/appcommon/http_util"
-  "net/http"
+	"github.com/keep94/appcommon/http_util"
+	"net/http"
 )
 
 var (
-  kThemeCss = `
+	kThemeCss = `
 .positive {color:#006600;}
 .negative {color:#660000;}
 .lineitem {background-color:#CCCCCC}
@@ -16,7 +16,7 @@ var (
 )
 
 var (
-  kVsafeJs = `
+	kVsafeJs = `
 function AutoLogout(ping_url, login_url, freq) {
   this._ping_url = ping_url;
   this._login_url = login_url;
@@ -69,10 +69,9 @@ AutoLogout.prototype._ping = function() {
 `
 )
 
-
 func New() http.Handler {
-  result := http.NewServeMux()
-  http_util.AddStatic(result, "/theme.css", kThemeCss)
-  http_util.AddStatic(result, "/vsafe.js", kVsafeJs)
-  return result
+	result := http.NewServeMux()
+	http_util.AddStatic(result, "/theme.css", kThemeCss)
+	http_util.AddStatic(result, "/vsafe.js", kVsafeJs)
+	return result
 }

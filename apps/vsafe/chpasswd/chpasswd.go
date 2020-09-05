@@ -1,26 +1,26 @@
 package chpasswd
 
 import (
-  "fmt"
-  "github.com/keep94/appcommon/db"
-  "github.com/keep94/appcommon/http_util"
-  "github.com/keep94/vsafe"
-  "github.com/keep94/vsafe/apps/vsafe/common"
-  "github.com/keep94/vsafe/vsafedb"
-  "html/template"
-  "net/http"
+	"fmt"
+	"github.com/keep94/appcommon/db"
+	"github.com/keep94/appcommon/http_util"
+	"github.com/keep94/vsafe"
+	"github.com/keep94/vsafe/apps/vsafe/common"
+	"github.com/keep94/vsafe/vsafedb"
+	"html/template"
+	"net/http"
 )
 
 const (
-  kMinPasswordLength = 6
+	kMinPasswordLength = 6
 )
 
 const (
-  kChPasswd = "chpasswd"
+	kChPasswd = "chpasswd"
 )
 
 var (
-  kTemplateSpec = `
+	kTemplateSpec = `
 <html>
 <head>
   <title>Vsafe using Go</title>
@@ -63,106 +63,106 @@ var (
 )
 
 var (
-  kTemplate *template.Template
+	kTemplate *template.Template
 )
 
 type UserStore interface {
-  vsafedb.UserByIdRunner
-  vsafedb.UpdateUserRunner
+	vsafedb.UserByIdRunner
+	vsafedb.UpdateUserRunner
 }
 
 type Handler struct {
-  Store UserStore
-  Doer db.Doer
+	Store UserStore
+	Doer  db.Doer
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-  session := common.GetUserSession(r)
-  if r.Method == "GET" {
-    http_util.WriteTemplate(
-        w,
-        kTemplate,
-        &view{
-            Name: session.User.Name,
-            Xsrf: common.NewXsrfToken(r, kChPasswd)})
-  } else {
-    r.ParseForm()
-    if !common.VerifyXsrfToken(r, kChPasswd) {
-      http_util.WriteTemplate(
-          w,
-          kTemplate,
-          &view{
-              Name: session.User.Name,
-              Xsrf: common.NewXsrfToken(r, kChPasswd),
-              Message: common.ErrXsrf.Error()})
-      return
-    }
-    old := r.Form.Get("old")
-    new := r.Form.Get("new")
-    verify := r.Form.Get("verify")
-    if new != verify {
-      http_util.WriteTemplate(
-          w,
-          kTemplate,
-          &view{
-              Name: session.User.Name,
-              Xsrf: common.NewXsrfToken(r, kChPasswd),
-              Message: "Password re-typed incorrectly."})
-      return
-    }
-    if len(new) < kMinPasswordLength {
-      http_util.WriteTemplate(
-          w,
-          kTemplate,
-          &view{
-              Name: session.User.Name,
-              Xsrf: common.NewXsrfToken(r, kChPasswd),
-              Message: fmt.Sprintf(
-                  "Password must be at least %d characters.",
-                  kMinPasswordLength)})
-      return
-    }
-    err := h.Doer.Do(func(t db.Transaction) error {
-      user, err := vsafedb.ChangePassword(
-          h.Store, t, session.User.Id, old, new)
-      if err != nil {
-        return err
-      }
-      session.User = user
-      return nil
-    })
-    if err == vsafe.ErrWrongPassword {
-      http_util.WriteTemplate(
-          w,
-          kTemplate,
-          &view{
-              Name: session.User.Name,
-              Xsrf: common.NewXsrfToken(r, kChPasswd),
-              Message: "Old password wrong."})
-      return
-    }
-    if err != nil {
-      http_util.ReportError(w, "Error updating database", err)
-      return
-    }
-    http_util.WriteTemplate(
-        w,
-        kTemplate,
-        &view{
-            Name: session.User.Name,
-            Message: "Password changed successfully.",
-            Xsrf: common.NewXsrfToken(r, kChPasswd),
-            Success: true})
-  }
+	session := common.GetUserSession(r)
+	if r.Method == "GET" {
+		http_util.WriteTemplate(
+			w,
+			kTemplate,
+			&view{
+				Name: session.User.Name,
+				Xsrf: common.NewXsrfToken(r, kChPasswd)})
+	} else {
+		r.ParseForm()
+		if !common.VerifyXsrfToken(r, kChPasswd) {
+			http_util.WriteTemplate(
+				w,
+				kTemplate,
+				&view{
+					Name:    session.User.Name,
+					Xsrf:    common.NewXsrfToken(r, kChPasswd),
+					Message: common.ErrXsrf.Error()})
+			return
+		}
+		old := r.Form.Get("old")
+		new := r.Form.Get("new")
+		verify := r.Form.Get("verify")
+		if new != verify {
+			http_util.WriteTemplate(
+				w,
+				kTemplate,
+				&view{
+					Name:    session.User.Name,
+					Xsrf:    common.NewXsrfToken(r, kChPasswd),
+					Message: "Password re-typed incorrectly."})
+			return
+		}
+		if len(new) < kMinPasswordLength {
+			http_util.WriteTemplate(
+				w,
+				kTemplate,
+				&view{
+					Name: session.User.Name,
+					Xsrf: common.NewXsrfToken(r, kChPasswd),
+					Message: fmt.Sprintf(
+						"Password must be at least %d characters.",
+						kMinPasswordLength)})
+			return
+		}
+		err := h.Doer.Do(func(t db.Transaction) error {
+			user, err := vsafedb.ChangePassword(
+				h.Store, t, session.User.Id, old, new)
+			if err != nil {
+				return err
+			}
+			session.User = user
+			return nil
+		})
+		if err == vsafe.ErrWrongPassword {
+			http_util.WriteTemplate(
+				w,
+				kTemplate,
+				&view{
+					Name:    session.User.Name,
+					Xsrf:    common.NewXsrfToken(r, kChPasswd),
+					Message: "Old password wrong."})
+			return
+		}
+		if err != nil {
+			http_util.ReportError(w, "Error updating database", err)
+			return
+		}
+		http_util.WriteTemplate(
+			w,
+			kTemplate,
+			&view{
+				Name:    session.User.Name,
+				Message: "Password changed successfully.",
+				Xsrf:    common.NewXsrfToken(r, kChPasswd),
+				Success: true})
+	}
 }
 
 type view struct {
-  Name string
-  Message string
-  Xsrf string
-  Success bool
+	Name    string
+	Message string
+	Xsrf    string
+	Success bool
 }
 
 func init() {
-  kTemplate = common.NewTemplate("chpasswd", kTemplateSpec)
+	kTemplate = common.NewTemplate("chpasswd", kTemplateSpec)
 }

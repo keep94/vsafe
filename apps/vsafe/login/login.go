@@ -1,17 +1,17 @@
 package login
 
 import (
-  "github.com/gorilla/sessions"
-  "github.com/keep94/appcommon/http_util"
-  "github.com/keep94/vsafe"
-  "github.com/keep94/vsafe/apps/vsafe/common"
-  "github.com/keep94/vsafe/vsafedb"
-  "html/template"
-  "net/http"
+	"github.com/gorilla/sessions"
+	"github.com/keep94/appcommon/http_util"
+	"github.com/keep94/vsafe"
+	"github.com/keep94/vsafe/apps/vsafe/common"
+	"github.com/keep94/vsafe/vsafedb"
+	"html/template"
+	"net/http"
 )
 
 var (
-  kTemplateSpec = `
+	kTemplateSpec = `
 <html>
 <head>
   <title>Vsafe using Go</title>
@@ -42,54 +42,54 @@ var (
 )
 
 var (
-  kTemplate *template.Template
+	kTemplate *template.Template
 )
 
 type Handler struct {
-  SessionStore sessions.Store
-  Store vsafedb.UserByNameRunner
+	SessionStore sessions.Store
+	Store        vsafedb.UserByNameRunner
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-  if r.Method == "GET" {
-    http_util.WriteTemplate(w, kTemplate, nil)
-  } else {
-    r.ParseForm()
-    userName := r.Form.Get("name")
-    password := r.Form.Get("password")
-    var user vsafe.User
-    err := h.Store.UserByName(nil, userName, &user)
-    if err == vsafedb.ErrNoSuchId {
-      http_util.WriteTemplate(w, kTemplate, "Login incorrect.")
-      return
-    }
-    if err != nil {
-      http_util.ReportError(w, "Database error", err)
-      return
-    }
-    key, err := user.VerifyPassword(password)
-    if err == vsafe.ErrWrongPassword {
-      http_util.WriteTemplate(w, kTemplate, "Login incorrect.")
-      return
-    }
-    if err != nil {
-      http_util.ReportError(w, "Error verifying password", err)
-      return
-    }
-    gs, err := common.NewGorillaSession(h.SessionStore, r)
-    if err != nil {
-      http_util.ReportError(w, "Error creating session", err)
-      return
-    }
-    session := common.CreateUserSession(gs)
-    session.SetUserId(user.Id)
-    session.SetKey(key)
-    session.ID = ""  // For added security, force a new session ID
-    session.Save(r, w)
-    http_util.Redirect(w, r, r.Form.Get("prev"))
-  }
+	if r.Method == "GET" {
+		http_util.WriteTemplate(w, kTemplate, nil)
+	} else {
+		r.ParseForm()
+		userName := r.Form.Get("name")
+		password := r.Form.Get("password")
+		var user vsafe.User
+		err := h.Store.UserByName(nil, userName, &user)
+		if err == vsafedb.ErrNoSuchId {
+			http_util.WriteTemplate(w, kTemplate, "Login incorrect.")
+			return
+		}
+		if err != nil {
+			http_util.ReportError(w, "Database error", err)
+			return
+		}
+		key, err := user.VerifyPassword(password)
+		if err == vsafe.ErrWrongPassword {
+			http_util.WriteTemplate(w, kTemplate, "Login incorrect.")
+			return
+		}
+		if err != nil {
+			http_util.ReportError(w, "Error verifying password", err)
+			return
+		}
+		gs, err := common.NewGorillaSession(h.SessionStore, r)
+		if err != nil {
+			http_util.ReportError(w, "Error creating session", err)
+			return
+		}
+		session := common.CreateUserSession(gs)
+		session.SetUserId(user.Id)
+		session.SetKey(key)
+		session.ID = "" // For added security, force a new session ID
+		session.Save(r, w)
+		http_util.Redirect(w, r, r.Form.Get("prev"))
+	}
 }
 
 func init() {
-  kTemplate = common.NewTemplate("login", kTemplateSpec)
+	kTemplate = common.NewTemplate("login", kTemplateSpec)
 }
