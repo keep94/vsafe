@@ -5,8 +5,8 @@ import (
 	"crypto/hmac"
 	"encoding/base64"
 	"errors"
-	"github.com/keep94/appcommon/idset"
-	"github.com/keep94/appcommon/kdf"
+	"github.com/keep94/toolbox/idset"
+	"github.com/keep94/toolbox/kdf"
 	"github.com/keep94/vsafe/aes"
 	"net/url"
 )

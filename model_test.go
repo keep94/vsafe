@@ -1,7 +1,7 @@
 package vsafe_test
 
 import (
-	"github.com/keep94/appcommon/kdf"
+	"github.com/keep94/toolbox/kdf"
 	"github.com/keep94/vsafe"
 	"testing"
 )

@@ -4,9 +4,9 @@ package vsafedb
 
 import (
 	"errors"
-	"github.com/keep94/appcommon/db"
-	"github.com/keep94/appcommon/str_util"
 	"github.com/keep94/goconsume"
+	"github.com/keep94/toolbox/db"
+	"github.com/keep94/toolbox/str_util"
 	"github.com/keep94/vsafe"
 	"sort"
 	"strings"

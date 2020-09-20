@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/keep94/appcommon/db/sqlite_db"
 	"github.com/keep94/goconsume"
 	"github.com/keep94/gosqlite/sqlite"
+	"github.com/keep94/toolbox/db/sqlite_db"
 	"github.com/keep94/vsafe"
 	"github.com/keep94/vsafe/vsafedb"
 	"github.com/keep94/vsafe/vsafedb/for_sqlite"

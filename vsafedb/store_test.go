@@ -1,9 +1,9 @@
 package vsafedb_test
 
 import (
-	"github.com/keep94/appcommon/db"
-	"github.com/keep94/appcommon/kdf"
 	"github.com/keep94/goconsume"
+	"github.com/keep94/toolbox/db"
+	"github.com/keep94/toolbox/kdf"
 	"github.com/keep94/vsafe"
 	"github.com/keep94/vsafe/vsafedb"
 	"net/url"

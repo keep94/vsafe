@@ -3,12 +3,12 @@
 package for_sqlite
 
 import (
-	"github.com/keep94/appcommon/db"
-	"github.com/keep94/appcommon/db/sqlite_db"
-	"github.com/keep94/appcommon/db/sqlite_rw"
-	"github.com/keep94/appcommon/idset"
 	"github.com/keep94/goconsume"
 	"github.com/keep94/gosqlite/sqlite"
+	"github.com/keep94/toolbox/db"
+	"github.com/keep94/toolbox/db/sqlite_db"
+	"github.com/keep94/toolbox/db/sqlite_rw"
+	"github.com/keep94/toolbox/idset"
 	"github.com/keep94/vsafe"
 	"github.com/keep94/vsafe/vsafedb"
 	"net/url"

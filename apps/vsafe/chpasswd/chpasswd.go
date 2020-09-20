@@ -2,8 +2,8 @@ package chpasswd
 
 import (
 	"fmt"
-	"github.com/keep94/appcommon/db"
-	"github.com/keep94/appcommon/http_util"
+	"github.com/keep94/toolbox/db"
+	"github.com/keep94/toolbox/http_util"
 	"github.com/keep94/vsafe"
 	"github.com/keep94/vsafe/apps/vsafe/common"
 	"github.com/keep94/vsafe/vsafedb"
