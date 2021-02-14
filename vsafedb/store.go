@@ -273,13 +273,13 @@ func Entries(
 	catId int64) ([]*vsafe.Entry, error) {
 	filter := newEntryFilter(query)
 	if catId != 0 {
-		filter = goconsume.All(filter, newCatFilter(catId))
+		filter = goconsume.NewApplier(filter, newCatFilter(catId))
 	}
 	var results []*vsafe.Entry
 	if err := store.EntriesByOwner(
 		nil,
 		keyId,
-		goconsume.Filter(
+		goconsume.MapFilter(
 			goconsume.AppendPtrsTo(&results),
 			filter)); err != nil {
 		return nil, err
@@ -327,21 +327,19 @@ func ChangePassword(
 	return &user, nil
 }
 
-func newCatFilter(cat int64) goconsume.FilterFunc {
-	return func(ptr interface{}) bool {
-		p := ptr.(*vsafe.Entry)
+func newCatFilter(cat int64) func(*vsafe.Entry) bool {
+	return func(p *vsafe.Entry) bool {
 		return p.Categories.Contains(cat)
 	}
 }
 
-func newEntryFilter(s string) goconsume.FilterFunc {
+func newEntryFilter(s string) goconsume.Applier {
 	s = str_util.Normalize(s)
 	if s == "" {
-		return goconsume.All()
+		return goconsume.NewApplier()
 	}
 	pattern := s
-	return func(ptr interface{}) bool {
-		p := ptr.(*vsafe.Entry)
+	return goconsume.NewApplier(func(p *vsafe.Entry) bool {
 		if p.Url != nil {
 			str := str_util.Normalize(p.Url.String())
 			if strings.Index(str, pattern) != -1 {
@@ -355,7 +353,7 @@ func newEntryFilter(s string) goconsume.FilterFunc {
 			return true
 		}
 		return false
-	}
+	})
 }
 
 type sortByTitle struct {
