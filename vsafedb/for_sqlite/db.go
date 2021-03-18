@@ -3,7 +3,7 @@
 package for_sqlite
 
 import (
-	"github.com/keep94/goconsume"
+	"github.com/keep94/consume"
 	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/db/sqlite_db"
@@ -81,7 +81,7 @@ func (s Store) UserByName(
 }
 
 func (s Store) Users(
-	t db.Transaction, consumer goconsume.Consumer) error {
+	t db.Transaction, consumer consume.Consumer) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
 		return sqlite_rw.ReadMultiple(
 			conn,
@@ -117,7 +117,7 @@ func (s Store) AddCategory(
 func (s Store) CategoriesByOwner(
 	t db.Transaction, owner int64) ([]vsafe.Category, error) {
 	var result []vsafe.Category
-	consumer := goconsume.AppendTo(&result)
+	consumer := consume.AppendTo(&result)
 	err := sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
 		return sqlite_rw.ReadMultiple(
 			conn,
@@ -178,7 +178,7 @@ func (s Store) EntryById(
 }
 
 func (s Store) EntriesByOwner(
-	t db.Transaction, owner int64, consumer goconsume.Consumer) error {
+	t db.Transaction, owner int64, consumer consume.Consumer) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
 		return sqlite_rw.ReadMultiple(
 			conn,

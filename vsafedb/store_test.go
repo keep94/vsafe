@@ -1,7 +1,7 @@
 package vsafedb_test
 
 import (
-	"github.com/keep94/goconsume"
+	"github.com/keep94/consume"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/kdf"
 	"github.com/keep94/vsafe"
@@ -527,7 +527,7 @@ func (f FakeStore) EntryById(t db.Transaction, id int64, e *vsafe.Entry) error {
 }
 
 func (f FakeStore) EntriesByOwner(
-	t db.Transaction, owner int64, consumer goconsume.Consumer) error {
+	t db.Transaction, owner int64, consumer consume.Consumer) error {
 	for _, entry := range f {
 		if !consumer.CanConsume() {
 			break

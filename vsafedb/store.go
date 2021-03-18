@@ -4,7 +4,7 @@ package vsafedb
 
 import (
 	"errors"
-	"github.com/keep94/goconsume"
+	"github.com/keep94/consume"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/str_util"
 	"github.com/keep94/vsafe"
@@ -36,7 +36,7 @@ type UserByNameRunner interface {
 
 type UsersRunner interface {
 	// Users retrieves all users from persistent storage ordered by name.
-	Users(t db.Transaction, consumer goconsume.Consumer) error
+	Users(t db.Transaction, consumer consume.Consumer) error
 }
 
 type UpdateUserRunner interface {
@@ -105,7 +105,7 @@ type EntryByIdRunner interface {
 type EntriesByOwnerRunner interface {
 	// EntriesByOwner retrieves all entries with a particular owner from
 	// persistent storage ordered by Id.
-	EntriesByOwner(t db.Transaction, owner int64, consumer goconsume.Consumer) error
+	EntriesByOwner(t db.Transaction, owner int64, consumer consume.Consumer) error
 }
 
 type UpdateEntryRunner interface {
@@ -273,14 +273,14 @@ func Entries(
 	catId int64) ([]*vsafe.Entry, error) {
 	filter := newEntryFilter(query)
 	if catId != 0 {
-		filter = goconsume.NewApplier(filter, newCatFilter(catId))
+		filter = consume.NewMapFilterer(filter, newCatFilter(catId))
 	}
 	var results []*vsafe.Entry
 	if err := store.EntriesByOwner(
 		nil,
 		keyId,
-		goconsume.MapFilter(
-			goconsume.AppendPtrsTo(&results),
+		consume.MapFilter(
+			consume.AppendPtrsTo(&results),
 			filter)); err != nil {
 		return nil, err
 	}
@@ -333,13 +333,13 @@ func newCatFilter(cat int64) func(*vsafe.Entry) bool {
 	}
 }
 
-func newEntryFilter(s string) goconsume.Applier {
+func newEntryFilter(s string) consume.MapFilterer {
 	s = str_util.Normalize(s)
 	if s == "" {
-		return goconsume.NewApplier()
+		return consume.NewMapFilterer()
 	}
 	pattern := s
-	return goconsume.NewApplier(func(p *vsafe.Entry) bool {
+	return consume.NewMapFilterer(func(p *vsafe.Entry) bool {
 		if p.Url != nil {
 			str := str_util.Normalize(p.Url.String())
 			if strings.Index(str, pattern) != -1 {
