@@ -140,7 +140,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w,
 		kTemplate,
 		&view{
-			Values:        http_util.Values{r.Form},
+			Values:        http_util.Values{Values: r.Form},
 			Name:          session.User.Name,
 			Entries:       entries,
 			Url:           r.URL,

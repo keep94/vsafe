@@ -406,7 +406,7 @@ func newView(
 	xsrf string,
 	err error) *view {
 	return &view{
-		Values:        http_util.Values{values},
+		Values:        http_util.Values{Values: values},
 		ExistingEntry: existingEntry,
 		KeyId:         keyId,
 		CatRows:       catRows,

@@ -47,7 +47,7 @@ type UserSession struct {
 // but does not populate the user field of the returned session.
 func CreateUserSession(s *sessions.Session) *UserSession {
 	return &UserSession{
-		UserIdSession: session_util.UserIdSession{s},
+		UserIdSession: session_util.UserIdSession{S: s},
 		Session:       s,
 	}
 }

@@ -131,7 +131,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if err != nil {
-			values = http_util.Values{r.Form}
+			values = http_util.Values{Values: r.Form}
 			message = ""
 		}
 	}
