@@ -10,6 +10,7 @@ import (
 	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db/sqlite_db"
 	"github.com/keep94/vsafe"
+	"github.com/keep94/vsafe/filters"
 	"github.com/keep94/vsafe/vsafedb"
 	"github.com/keep94/vsafe/vsafedb/for_sqlite"
 	"golang.org/x/term"
@@ -55,13 +56,13 @@ func showResults(store store, userPassword, searchPassword string) {
 	key := getKey(store, userPassword)
 	consumer := consume.MapFilter(
 		consume.ConsumerFunc(showOneResult),
-		func(src, dest *vsafe.Entry) bool {
+		filters.EntryMapper(func(src, dest *vsafe.Entry) bool {
 			*dest = *src
 			return dest.Decrypt(key) == nil
-		},
-		func(entry *vsafe.Entry) bool {
+		}),
+		filters.EntryFilterer(func(entry *vsafe.Entry) bool {
 			return entry.Password == searchPassword
-		})
+		}))
 	if err := store.EntriesByOwner(nil, key.Id, consumer); err != nil {
 		log.Fatal(err)
 	}

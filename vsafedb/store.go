@@ -8,6 +8,7 @@ import (
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/str_util"
 	"github.com/keep94/vsafe"
+	"github.com/keep94/vsafe/filters"
 	"sort"
 	"strings"
 )
@@ -327,10 +328,10 @@ func ChangePassword(
 	return &user, nil
 }
 
-func newCatFilter(cat int64) func(*vsafe.Entry) bool {
-	return func(p *vsafe.Entry) bool {
+func newCatFilter(cat int64) consume.Filterer {
+	return filters.EntryFilterer(func(p *vsafe.Entry) bool {
 		return p.Categories.Contains(cat)
-	}
+	})
 }
 
 func newEntryFilter(s string) consume.MapFilterer {
@@ -339,21 +340,22 @@ func newEntryFilter(s string) consume.MapFilterer {
 		return consume.NewMapFilterer()
 	}
 	pattern := s
-	return consume.NewMapFilterer(func(p *vsafe.Entry) bool {
-		if p.Url != nil {
-			str := str_util.Normalize(p.Url.String())
-			if strings.Index(str, pattern) != -1 {
+	return consume.NewMapFilterer(
+		filters.EntryFilterer(func(p *vsafe.Entry) bool {
+			if p.Url != nil {
+				str := str_util.Normalize(p.Url.String())
+				if strings.Index(str, pattern) != -1 {
+					return true
+				}
+			}
+			if strings.Index(str_util.Normalize(p.Title), pattern) != -1 {
 				return true
 			}
-		}
-		if strings.Index(str_util.Normalize(p.Title), pattern) != -1 {
-			return true
-		}
-		if strings.Index(str_util.Normalize(p.Desc), pattern) != -1 {
-			return true
-		}
-		return false
-	})
+			if strings.Index(str_util.Normalize(p.Desc), pattern) != -1 {
+				return true
+			}
+			return false
+		}))
 }
 
 type sortByTitle struct {
