@@ -8,6 +8,8 @@ github.com/gorilla/sessions v1.2.1 h1:DHd3rPN5lE3Ts3D8rKkQ8x/0kqfeNmBAaiSi+o7Fsg
 github.com/gorilla/sessions v1.2.1/go.mod h1:dk2InVEVJ0sfLlnXv9EAgkf6ecYs/i80K/zI+bUmuGM=
 github.com/keep94/consume v0.5.0 h1:3DKU1UchKHSTsNWEGuS2N05REwMs5Ay/uWpZFtUHVrk=
 github.com/keep94/consume v0.5.0/go.mod h1:eXYAFW8AdRZWuJK6TRCMeYBDBRcggccBuqaDFLv6brQ=
+github.com/keep94/consume2 v0.1.0 h1:FciiITkuJTHghJwfrsIgxKTaYUyHAEHUfhosD5i7PEM=
+github.com/keep94/consume2 v0.1.0/go.mod h1:oI2GS5jRbaWtXBO3wLiqr+dHpNmEyOgAJd4C1Jxp9o0=
 github.com/keep94/gosqlite v1.0.0 h1:wYAuan8F3qu/nfqllQTOg7fPlRQGXXc3Bw7mfo7JiyY=
 github.com/keep94/gosqlite v1.0.0/go.mod h1:hTK4m/OcNf4Lp7HTQFwhGrRn81oSBI+xf5t5zx5r3Pg=
 github.com/keep94/ramstore v1.0.0 h1:/3MQIxxMcX7Ya+hAsL4shM1hmZ9i1MhPRvmunh+8OTw=
@@ -32,7 +34,6 @@ golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b h1:9zKuko04nR4gjZ4+DNjHqRlAJqbJETHwiNKDqTfOjfE=
 golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b/go.mod h1:jbD1KX2456YbFQfuXm/mYQcufACuNUgVhRMnK/tPxf8=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
-gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c h1:dUUwHk2QECo/6vqA44rthZ8ie2QXMNeKRTHCNY2nXvo=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=

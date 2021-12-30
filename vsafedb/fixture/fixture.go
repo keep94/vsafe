@@ -3,7 +3,7 @@
 package fixture
 
 import (
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/vsafe"
 	"github.com/keep94/vsafe/vsafedb"
 	"net/url"
@@ -159,7 +159,7 @@ func Users(t *testing.T, store UsersStore) {
 	var first, second vsafe.User
 	var users []*vsafe.User
 	createUsers(t, store, &first, &second)
-	if err := store.Users(nil, consume.AppendPtrsTo(&users)); err != nil {
+	if err := store.Users(nil, consume2.AppendPtrsTo(&users)); err != nil {
 		t.Fatalf("Got error reading database: %v", err)
 	}
 	assertUserEqual(t, &second, users[0])
@@ -291,7 +291,8 @@ func EntriesByOwner(t *testing.T, store EntriesByOwnerStore) {
 		t.Fatalf("Got error adding entry %v", err)
 	}
 	var entries []*vsafe.Entry
-	if err := store.EntriesByOwner(nil, kOwner, consume.AppendPtrsTo(&entries)); err != nil {
+	if err := store.EntriesByOwner(
+		nil, kOwner, consume2.AppendPtrsTo(&entries)); err != nil {
 		t.Fatalf("Got error reading database by id: %v", err)
 	}
 	if len(entries) != 2 {

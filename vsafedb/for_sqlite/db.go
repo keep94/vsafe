@@ -3,7 +3,7 @@
 package for_sqlite
 
 import (
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/db/sqlite_db"
@@ -81,12 +81,12 @@ func (s Store) UserByName(
 }
 
 func (s Store) Users(
-	t db.Transaction, consumer consume.Consumer) error {
+	t db.Transaction, consumer consume2.Consumer[vsafe.User]) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
 		return sqlite_rw.ReadMultiple(
 			conn,
 			(&rawUser{}).init(&vsafe.User{}),
-			consumer,
+			consume2.NewNoGenerics(consumer),
 			kSQLUsers)
 	})
 }
@@ -117,12 +117,12 @@ func (s Store) AddCategory(
 func (s Store) CategoriesByOwner(
 	t db.Transaction, owner int64) ([]vsafe.Category, error) {
 	var result []vsafe.Category
-	consumer := consume.AppendTo(&result)
+	consumer := consume2.AppendTo(&result)
 	err := sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
 		return sqlite_rw.ReadMultiple(
 			conn,
 			(&rawCategory{}).init(&vsafe.Category{}),
-			consumer,
+			consume2.NewNoGenerics(consumer),
 			kSQLCategoryByOwner,
 			owner)
 	})
@@ -178,12 +178,14 @@ func (s Store) EntryById(
 }
 
 func (s Store) EntriesByOwner(
-	t db.Transaction, owner int64, consumer consume.Consumer) error {
+	t db.Transaction,
+	owner int64,
+	consumer consume2.Consumer[vsafe.Entry]) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
 		return sqlite_rw.ReadMultiple(
 			conn,
 			(&rawEntry{}).init(&vsafe.Entry{}),
-			consumer,
+			consume2.NewNoGenerics(consumer),
 			kSQLEntryByOwner,
 			owner)
 	})

@@ -4,11 +4,10 @@ package vsafedb
 
 import (
 	"errors"
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/str_util"
 	"github.com/keep94/vsafe"
-	"github.com/keep94/vsafe/filters"
 	"sort"
 	"strings"
 )
@@ -37,7 +36,7 @@ type UserByNameRunner interface {
 
 type UsersRunner interface {
 	// Users retrieves all users from persistent storage ordered by name.
-	Users(t db.Transaction, consumer consume.Consumer) error
+	Users(t db.Transaction, consumer consume2.Consumer[vsafe.User]) error
 }
 
 type UpdateUserRunner interface {
@@ -106,7 +105,8 @@ type EntryByIdRunner interface {
 type EntriesByOwnerRunner interface {
 	// EntriesByOwner retrieves all entries with a particular owner from
 	// persistent storage ordered by Id.
-	EntriesByOwner(t db.Transaction, owner int64, consumer consume.Consumer) error
+	EntriesByOwner(
+		t db.Transaction, owner int64, consumer consume2.Consumer[vsafe.Entry]) error
 }
 
 type UpdateEntryRunner interface {
@@ -274,14 +274,14 @@ func Entries(
 	catId int64) ([]*vsafe.Entry, error) {
 	filter := newEntryFilter(query)
 	if catId != 0 {
-		filter = consume.NewMapFilterer(filter, newCatFilter(catId))
+		filter = consume2.ComposeFilters(filter, newCatFilter(catId))
 	}
 	var results []*vsafe.Entry
 	if err := store.EntriesByOwner(
 		nil,
 		keyId,
-		consume.MapFilter(
-			consume.AppendPtrsTo(&results),
+		consume2.Filter(
+			consume2.AppendPtrsTo(&results),
 			filter)); err != nil {
 		return nil, err
 	}
@@ -328,34 +328,33 @@ func ChangePassword(
 	return &user, nil
 }
 
-func newCatFilter(cat int64) consume.Filterer {
-	return filters.EntryFilterer(func(p *vsafe.Entry) bool {
-		return p.Categories.Contains(cat)
-	})
+func newCatFilter(cat int64) func(vsafe.Entry) bool {
+	return func(entry vsafe.Entry) bool {
+		return entry.Categories.Contains(cat)
+	}
 }
 
-func newEntryFilter(s string) consume.MapFilterer {
+func newEntryFilter(s string) func(vsafe.Entry) bool {
 	s = str_util.Normalize(s)
 	if s == "" {
-		return consume.NewMapFilterer()
+		return consume2.ComposeFilters[vsafe.Entry]()
 	}
 	pattern := s
-	return consume.NewMapFilterer(
-		filters.EntryFilterer(func(p *vsafe.Entry) bool {
-			if p.Url != nil {
-				str := str_util.Normalize(p.Url.String())
-				if strings.Index(str, pattern) != -1 {
-					return true
-				}
-			}
-			if strings.Index(str_util.Normalize(p.Title), pattern) != -1 {
+	return func(entry vsafe.Entry) bool {
+		if entry.Url != nil {
+			str := str_util.Normalize(entry.Url.String())
+			if strings.Index(str, pattern) != -1 {
 				return true
 			}
-			if strings.Index(str_util.Normalize(p.Desc), pattern) != -1 {
-				return true
-			}
-			return false
-		}))
+		}
+		if strings.Index(str_util.Normalize(entry.Title), pattern) != -1 {
+			return true
+		}
+		if strings.Index(str_util.Normalize(entry.Desc), pattern) != -1 {
+			return true
+		}
+		return false
+	}
 }
 
 type sortByTitle struct {

@@ -6,11 +6,10 @@ import (
 	"log"
 	"syscall"
 
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db/sqlite_db"
 	"github.com/keep94/vsafe"
-	"github.com/keep94/vsafe/filters"
 	"github.com/keep94/vsafe/vsafedb"
 	"github.com/keep94/vsafe/vsafedb/for_sqlite"
 	"golang.org/x/term"
@@ -54,22 +53,24 @@ func getPassword(prompt string) string {
 
 func showResults(store store, userPassword, searchPassword string) {
 	key := getKey(store, userPassword)
-	consumer := consume.MapFilter(
-		consume.ConsumerFunc(showOneResult),
-		filters.EntryMapper(func(src, dest *vsafe.Entry) bool {
-			*dest = *src
-			return dest.Decrypt(key) == nil
-		}),
-		filters.EntryFilterer(func(entry *vsafe.Entry) bool {
-			return entry.Password == searchPassword
-		}))
+	consumer := consume2.MaybeMap(
+		consume2.Filter[vsafe.Entry](
+			consume2.ConsumerFunc[vsafe.Entry](showOneResult),
+			func(entry vsafe.Entry) bool {
+				return entry.Password == searchPassword
+			},
+		),
+		func(entry vsafe.Entry) (vsafe.Entry, bool) {
+			ok := entry.Decrypt(key) == nil
+			return entry, ok
+		},
+	)
 	if err := store.EntriesByOwner(nil, key.Id, consumer); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func showOneResult(ptr interface{}) {
-	entry := ptr.(*vsafe.Entry)
+func showOneResult(entry vsafe.Entry) {
 	fmt.Printf("Id: %d\n", entry.Id)
 	fmt.Printf("Url: %v\n", entry.Url)
 	fmt.Printf("Title: %v\n", entry.Title)
