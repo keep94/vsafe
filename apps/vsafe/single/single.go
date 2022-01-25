@@ -27,6 +27,7 @@ const (
 
 var (
 	kErrTooManyCategories = errors.New("No more than 10 categories can be selected")
+	kErrTitleRequired     = errors.New("Title required")
 )
 
 var (
@@ -275,6 +276,10 @@ func toEntry(values url.Values, catMap map[int64]bool) (mutation vsafe.EntryUpda
 		return
 	}
 	title := values.Get("title")
+	if strings.TrimSpace(title) == "" {
+		err = kErrTitleRequired
+		return
+	}
 	desc := values.Get("desc")
 	uName := values.Get("uname")
 	password := values.Get("password")
