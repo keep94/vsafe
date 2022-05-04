@@ -83,10 +83,10 @@ func (s Store) UserByName(
 func (s Store) Users(
 	t db.Transaction, consumer consume2.Consumer[vsafe.User]) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadMultiple(
+		return sqlite_rw.ReadMultiple[vsafe.User](
 			conn,
 			(&rawUser{}).init(&vsafe.User{}),
-			consume2.NewNoGenerics(consumer),
+			consumer,
 			kSQLUsers)
 	})
 }
@@ -119,10 +119,10 @@ func (s Store) CategoriesByOwner(
 	var result []vsafe.Category
 	consumer := consume2.AppendTo(&result)
 	err := sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadMultiple(
+		return sqlite_rw.ReadMultiple[vsafe.Category](
 			conn,
 			(&rawCategory{}).init(&vsafe.Category{}),
-			consume2.NewNoGenerics(consumer),
+			consumer,
 			kSQLCategoryByOwner,
 			owner)
 	})
@@ -182,10 +182,10 @@ func (s Store) EntriesByOwner(
 	owner int64,
 	consumer consume2.Consumer[vsafe.Entry]) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadMultiple(
+		return sqlite_rw.ReadMultiple[vsafe.Entry](
 			conn,
 			(&rawEntry{}).init(&vsafe.Entry{}),
-			consume2.NewNoGenerics(consumer),
+			consumer,
 			kSQLEntryByOwner,
 			owner)
 	})
@@ -222,8 +222,8 @@ func (r *rawUser) Values() []interface{} {
 	return []interface{}{r.Owner, r.Name, r.Key, r.Checksum, r.Id}
 }
 
-func (r *rawUser) ValuePtr() interface{} {
-	return r.User
+func (r *rawUser) ValueRead() vsafe.User {
+	return *r.User
 }
 
 type rawCategory struct {
@@ -244,8 +244,8 @@ func (r *rawCategory) Values() []interface{} {
 	return []interface{}{r.Owner, r.Name, r.Id}
 }
 
-func (r *rawCategory) ValuePtr() interface{} {
-	return r.Category
+func (r *rawCategory) ValueRead() vsafe.Category {
+	return *r.Category
 }
 
 type rawEntry struct {
@@ -267,8 +267,8 @@ func (r *rawEntry) Values() []interface{} {
 	return []interface{}{r.Owner, r.rawUrl, r.Title, r.Desc, r.UName, r.Password, r.Special, r.rawCategories, r.Id}
 }
 
-func (r *rawEntry) ValuePtr() interface{} {
-	return r.Entry
+func (r *rawEntry) ValueRead() vsafe.Entry {
+	return *r.Entry
 }
 
 func (r *rawEntry) SetEtag(etag uint64) {
