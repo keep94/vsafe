@@ -4,7 +4,7 @@ package common
 
 import (
 	"errors"
-	"github.com/gorilla/sessions"
+	"github.com/keep94/sessions"
 	"github.com/keep94/toolbox/http_util"
 	"github.com/keep94/toolbox/session_util"
 	"github.com/keep94/vsafe"
