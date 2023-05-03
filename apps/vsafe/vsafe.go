@@ -1,15 +1,18 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
+	"net/http"
+	"strconv"
+
 	"github.com/keep94/context"
-	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/ramstore"
 	"github.com/keep94/sessions"
 	"github.com/keep94/toolbox/db"
-	"github.com/keep94/toolbox/db/sqlite_db"
+	"github.com/keep94/toolbox/db/sqlite3_db"
 	"github.com/keep94/toolbox/http_util"
 	"github.com/keep94/toolbox/logging"
 	"github.com/keep94/vsafe"
@@ -23,8 +26,7 @@ import (
 	"github.com/keep94/vsafe/apps/vsafe/static"
 	"github.com/keep94/vsafe/vsafedb/for_sqlite"
 	"github.com/keep94/weblogs"
-	"net/http"
-	"strconv"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -177,12 +179,12 @@ func init() {
 }
 
 func setupDb(filepath string) {
-	conn, err := sqlite.Open(filepath)
+	rawdb, err := sql.Open("sqlite3", filepath)
 	if err != nil {
 		panic(err)
 	}
-	dbase := sqlite_db.New(conn)
-	kDoer = sqlite_db.NewDoer(dbase)
+	dbase := sqlite3_db.New(rawdb)
+	kDoer = sqlite3_db.NewDoer(dbase)
 	kStore = for_sqlite.New(dbase)
 }
 

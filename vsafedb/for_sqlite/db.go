@@ -3,15 +3,16 @@
 package for_sqlite
 
 import (
+	"database/sql"
+	"net/url"
+
 	"github.com/keep94/consume2"
-	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db"
-	"github.com/keep94/toolbox/db/sqlite_db"
-	"github.com/keep94/toolbox/db/sqlite_rw"
+	"github.com/keep94/toolbox/db/sqlite3_db"
+	"github.com/keep94/toolbox/db/sqlite3_rw"
 	"github.com/keep94/toolbox/idset"
 	"github.com/keep94/vsafe"
 	"github.com/keep94/vsafe/vsafedb"
-	"net/url"
 )
 
 const (
@@ -34,33 +35,33 @@ const (
 )
 
 type Store struct {
-	db sqlite_db.Doer
+	db sqlite3_db.Doer
 }
 
 // New creates a sqlite implementation of the vsafe app datastore.
-func New(db *sqlite_db.Db) Store {
+func New(db *sqlite3_db.Db) Store {
 	return Store{db}
 }
 
 // ConnNew creates a sqlite implementation of the vsafe app datastore from
 // a sqlite connection instance.
-func ConnNew(conn *sqlite.Conn) Store {
-	return Store{sqlite_db.NewSqliteDoer(conn)}
+func ConnNew(tx *sql.Tx) Store {
+	return Store{sqlite3_db.NewSqlite3Doer(tx)}
 }
 
 func (s Store) AddUser(
 	t db.Transaction, user *vsafe.User) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.AddRow(
-			conn, (&rawUser{}).init(user), &user.Id, kSQLAddUser)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.AddRow(
+			tx, (&rawUser{}).init(user), &user.Id, kSQLAddUser)
 	})
 }
 
 func (s Store) UserById(
 	t db.Transaction, id int64, user *vsafe.User) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadSingle(
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadSingle(
+			tx,
 			(&rawUser{}).init(user),
 			vsafedb.ErrNoSuchId,
 			kSQLUserById,
@@ -70,9 +71,9 @@ func (s Store) UserById(
 
 func (s Store) UserByName(
 	t db.Transaction, name string, user *vsafe.User) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadSingle(
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadSingle(
+			tx,
 			(&rawUser{}).init(user),
 			vsafedb.ErrNoSuchId,
 			kSQLUserByName,
@@ -82,9 +83,9 @@ func (s Store) UserByName(
 
 func (s Store) Users(
 	t db.Transaction, consumer consume2.Consumer[vsafe.User]) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadMultiple[vsafe.User](
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadMultiple[vsafe.User](
+			tx,
 			(&rawUser{}).init(&vsafe.User{}),
 			consumer,
 			kSQLUsers)
@@ -93,24 +94,25 @@ func (s Store) Users(
 
 func (s Store) UpdateUser(
 	t db.Transaction, user *vsafe.User) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.UpdateRow(
-			conn, (&rawUser{}).init(user), kSQLUpdateUser)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.UpdateRow(
+			tx, (&rawUser{}).init(user), kSQLUpdateUser)
 	})
 }
 
 func (s Store) RemoveUser(
 	t db.Transaction, name string) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return conn.Exec(kSQLRemoveUser, name)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		_, err := tx.Exec(kSQLRemoveUser, name)
+		return err
 	})
 }
 
 func (s Store) AddCategory(
 	t db.Transaction, category *vsafe.Category) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.AddRow(
-			conn, (&rawCategory{}).init(category), &category.Id, kSQLAddCategory)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.AddRow(
+			tx, (&rawCategory{}).init(category), &category.Id, kSQLAddCategory)
 	})
 }
 
@@ -118,9 +120,9 @@ func (s Store) CategoriesByOwner(
 	t db.Transaction, owner int64) ([]vsafe.Category, error) {
 	var result []vsafe.Category
 	consumer := consume2.AppendTo(&result)
-	err := sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadMultiple[vsafe.Category](
-			conn,
+	err := sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadMultiple[vsafe.Category](
+			tx,
 			(&rawCategory{}).init(&vsafe.Category{}),
 			consumer,
 			kSQLCategoryByOwner,
@@ -134,9 +136,9 @@ func (s Store) CategoriesByOwner(
 
 func (s Store) CategoryById(
 	t db.Transaction, id int64, category *vsafe.Category) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadSingle(
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadSingle(
+			tx,
 			(&rawCategory{}).init(category),
 			vsafedb.ErrNoSuchId,
 			kSQLCategoryById,
@@ -145,31 +147,32 @@ func (s Store) CategoryById(
 }
 
 func (s Store) UpdateCategory(t db.Transaction, category *vsafe.Category) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.UpdateRow(
-			conn, (&rawCategory{}).init(category), kSQLUpdateCategory)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.UpdateRow(
+			tx, (&rawCategory{}).init(category), kSQLUpdateCategory)
 	})
 }
 
 func (s Store) RemoveCategory(t db.Transaction, id int64) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return conn.Exec(kSQLRemoveCategory, id)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		_, err := tx.Exec(kSQLRemoveCategory, id)
+		return err
 	})
 }
 
 func (s Store) AddEntry(
 	t db.Transaction, entry *vsafe.Entry) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.AddRow(
-			conn, (&rawEntry{}).init(entry), &entry.Id, kSQLAddEntry)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.AddRow(
+			tx, (&rawEntry{}).init(entry), &entry.Id, kSQLAddEntry)
 	})
 }
 
 func (s Store) EntryById(
 	t db.Transaction, id int64, entry *vsafe.Entry) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadSingle(
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadSingle(
+			tx,
 			(&rawEntry{}).init(entry),
 			vsafedb.ErrNoSuchId,
 			kSQLEntryById,
@@ -181,9 +184,9 @@ func (s Store) EntriesByOwner(
 	t db.Transaction,
 	owner int64,
 	consumer consume2.Consumer[vsafe.Entry]) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadMultiple[vsafe.Entry](
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadMultiple[vsafe.Entry](
+			tx,
 			(&rawEntry{}).init(&vsafe.Entry{}),
 			consumer,
 			kSQLEntryByOwner,
@@ -192,21 +195,22 @@ func (s Store) EntriesByOwner(
 }
 
 func (s Store) UpdateEntry(t db.Transaction, entry *vsafe.Entry) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.UpdateRow(
-			conn, (&rawEntry{}).init(entry), kSQLUpdateEntry)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.UpdateRow(
+			tx, (&rawEntry{}).init(entry), kSQLUpdateEntry)
 	})
 }
 
 func (s Store) RemoveEntry(t db.Transaction, id, owner int64) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return conn.Exec(kSQLRemoveEntry, id, owner)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		_, err := tx.Exec(kSQLRemoveEntry, id, owner)
+		return err
 	})
 }
 
 type rawUser struct {
 	*vsafe.User
-	sqlite_rw.SimpleRow
+	sqlite3_rw.SimpleRow
 }
 
 func (r *rawUser) init(bo *vsafe.User) *rawUser {
@@ -228,7 +232,7 @@ func (r *rawUser) ValueRead() vsafe.User {
 
 type rawCategory struct {
 	*vsafe.Category
-	sqlite_rw.SimpleRow
+	sqlite3_rw.SimpleRow
 }
 
 func (r *rawCategory) init(bo *vsafe.Category) *rawCategory {

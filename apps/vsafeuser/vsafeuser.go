@@ -1,16 +1,18 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
+	"os"
+
 	"github.com/keep94/consume2"
-	"github.com/keep94/gosqlite/sqlite"
-	"github.com/keep94/toolbox/db/sqlite_db"
+	"github.com/keep94/toolbox/db/sqlite3_db"
 	"github.com/keep94/vsafe"
 	"github.com/keep94/vsafe/vsafedb"
 	"github.com/keep94/vsafe/vsafedb/for_sqlite"
 	"github.com/keep94/vsafe/vsafedb/sqlite_setup"
-	"os"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -141,21 +143,18 @@ func doRemove(args []string) bool {
 	return true
 }
 
-func openDb(dbPath string) *sqlite_db.Db {
-	conn, err := sqlite.Open(dbPath)
+func openDb(dbPath string) *sqlite3_db.Db {
+	rawdb, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		fmt.Printf("Unable to open database - %s\n", dbPath)
 		os.Exit(1)
 	}
-	return sqlite_db.New(conn)
+	return sqlite3_db.New(rawdb)
 }
 
-func initDb(dbase *sqlite_db.Db) (store for_sqlite.Store, ok bool) {
-	err := dbase.Do(func(conn *sqlite.Conn) error {
-		return sqlite_setup.SetUpTables(conn)
-	})
+func initDb(dbase *sqlite3_db.Db) (store for_sqlite.Store, ok bool) {
+	err := dbase.Do(sqlite_setup.SetUpTables)
 	if err != nil {
-
 		fmt.Printf("Unable to create tables - %v\n", err)
 		return
 	}

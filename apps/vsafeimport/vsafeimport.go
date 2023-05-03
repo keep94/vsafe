@@ -1,17 +1,19 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/keep94/gosqlite/sqlite"
+	"net/url"
+	"os"
+
 	"github.com/keep94/toolbox/db"
-	"github.com/keep94/toolbox/db/sqlite_db"
+	"github.com/keep94/toolbox/db/sqlite3_db"
 	"github.com/keep94/vsafe"
 	"github.com/keep94/vsafe/vsafedb"
 	"github.com/keep94/vsafe/vsafedb/for_sqlite"
-	"net/url"
-	"os"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var (
@@ -36,15 +38,15 @@ func main() {
 		flag.Usage()
 		return
 	}
-	conn, err := sqlite.Open(fDb)
+	rawdb, err := sql.Open("sqlite3", fDb)
 	if err != nil {
 		fmt.Printf("Unable to open database - %s\n", fDb)
 		return
 	}
-	dbase := sqlite_db.New(conn)
+	dbase := sqlite3_db.New(rawdb)
 	defer dbase.Close()
 	store := for_sqlite.New(dbase)
-	doer := sqlite_db.NewDoer(dbase)
+	doer := sqlite3_db.NewDoer(dbase)
 	var user vsafe.User
 	if err = store.UserByName(nil, fName, &user); err != nil {
 		fmt.Printf("Error retrieving user - %v\n", err)

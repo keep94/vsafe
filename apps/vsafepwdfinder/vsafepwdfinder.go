@@ -1,17 +1,18 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
 	"syscall"
 
 	"github.com/keep94/consume2"
-	"github.com/keep94/gosqlite/sqlite"
-	"github.com/keep94/toolbox/db/sqlite_db"
+	"github.com/keep94/toolbox/db/sqlite3_db"
 	"github.com/keep94/vsafe"
 	"github.com/keep94/vsafe/vsafedb"
 	"github.com/keep94/vsafe/vsafedb/for_sqlite"
+	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/term"
 )
 
@@ -90,12 +91,12 @@ func getKey(store vsafedb.UserByNameRunner, password string) *vsafe.Key {
 	return key
 }
 
-func openDb(filepath string) *sqlite_db.Db {
-	conn, err := sqlite.Open(filepath)
+func openDb(filepath string) *sqlite3_db.Db {
+	rawdb, err := sql.Open("sqlite3", filepath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return sqlite_db.New(conn)
+	return sqlite3_db.New(rawdb)
 }
 
 func init() {

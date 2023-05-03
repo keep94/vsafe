@@ -1,12 +1,14 @@
 package for_sqlite_test
 
 import (
-	"github.com/keep94/gosqlite/sqlite"
-	"github.com/keep94/toolbox/db/sqlite_db"
+	"database/sql"
+	"testing"
+
+	"github.com/keep94/toolbox/db/sqlite3_db"
 	"github.com/keep94/vsafe/vsafedb/fixture"
 	"github.com/keep94/vsafe/vsafedb/for_sqlite"
 	"github.com/keep94/vsafe/vsafedb/sqlite_setup"
-	"testing"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func TestUserById(t *testing.T) {
@@ -93,21 +95,19 @@ func TestRemoveEntry(t *testing.T) {
 	fixture.RemoveEntry(t, for_sqlite.New(db))
 }
 
-func closeDb(t *testing.T, db *sqlite_db.Db) {
+func closeDb(t *testing.T, db *sqlite3_db.Db) {
 	if err := db.Close(); err != nil {
 		t.Errorf("Error closing database: %v", err)
 	}
 }
 
-func openDb(t *testing.T) *sqlite_db.Db {
-	conn, err := sqlite.Open(":memory:")
+func openDb(t *testing.T) *sqlite3_db.Db {
+	rawdb, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("Error opening database: %v", err)
 	}
-	db := sqlite_db.New(conn)
-	err = db.Do(func(conn *sqlite.Conn) error {
-		return sqlite_setup.SetUpTables(conn)
-	})
+	db := sqlite3_db.New(rawdb)
+	err = db.Do(sqlite_setup.SetUpTables)
 	if err != nil {
 		t.Fatalf("Error creating tables: %v", err)
 	}
