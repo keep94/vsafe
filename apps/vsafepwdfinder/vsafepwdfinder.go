@@ -54,18 +54,17 @@ func getPassword(prompt string) string {
 
 func showResults(store store, userPassword, searchPassword string) {
 	key := getKey(store, userPassword)
-	consumer := consume2.MaybeMap(
-		consume2.Filter[vsafe.Entry](
-			consume2.ConsumerFunc[vsafe.Entry](showOneResult),
-			func(entry vsafe.Entry) bool {
-				return entry.Password == searchPassword
-			},
-		),
+	pipeline := consume2.PMaybeMap(
 		func(entry vsafe.Entry) (vsafe.Entry, bool) {
 			ok := entry.Decrypt(key) == nil
 			return entry, ok
-		},
-	)
+		})
+	pipeline = consume2.Join(pipeline, consume2.PFilter(
+		func(entry vsafe.Entry) bool {
+			return entry.Password == searchPassword
+		}))
+	consumer := pipeline.Run(
+		consume2.ConsumerFunc[vsafe.Entry](showOneResult))
 	if err := store.EntriesByOwner(nil, key.Id, consumer); err != nil {
 		log.Fatal(err)
 	}
