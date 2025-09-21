@@ -11,6 +11,7 @@ import (
 	"github.com/keep94/context"
 	"github.com/keep94/ramstore"
 	"github.com/keep94/sessions"
+	"github.com/keep94/toolbox/build"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/db/sqlite3_db"
 	"github.com/keep94/toolbox/http_util"
@@ -31,7 +32,7 @@ import (
 
 const (
 	// Set to the same thing as kXsrfTimeout in common/common.go
-	kSessionTimeout = 900
+	kSessionTimeout = 3600
 )
 
 var (
@@ -78,9 +79,13 @@ func main() {
 		"/auth/poll", pollHandler{})
 	http.Handle(
 		"/vsafe/", &authHandler{mux})
+	version, _ := build.MainVersion()
 	mux.Handle("/vsafe/catedit", &catedit.Handler{Store: kStore, Doer: kDoer})
 	mux.Handle("/vsafe/chpasswd", &chpasswd.Handler{Store: kStore, Doer: kDoer})
-	mux.Handle("/vsafe/home", &home.Handler{Store: kStore})
+	mux.Handle(
+		"/vsafe/home",
+		&home.Handler{Store: kStore, BuildId: build.BuildId(version)},
+	)
 	mux.Handle("/vsafe/logout", &logout.Handler{})
 	mux.Handle("/vsafe/single", &single.Handler{Store: kStore, Doer: kDoer})
 	defaultHandler := context.ClearHandler(

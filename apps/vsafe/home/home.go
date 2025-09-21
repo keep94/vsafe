@@ -24,7 +24,7 @@ var (
   <link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon" />
 </head>
 <body>
-<h2>Vsafe using Go for {{.Name}}</h2>
+<h2>Vsafe using Go for {{.Name}} {{.BuildId}}</h2>
 <form action="/vsafe/home">
   <input type="text" name="q" value="{{.Get "q"}}" />
   <select name="cat" size=1>
@@ -111,7 +111,8 @@ type Store interface {
 }
 
 type Handler struct {
-	Store Store
+	Store   Store
+	BuildId string
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -145,7 +146,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Entries:       entries,
 			Url:           r.URL,
 			Id:            id,
-			CatSelections: common.CatSelections(categories)})
+			CatSelections: common.CatSelections(categories),
+			BuildId:       h.BuildId})
 }
 
 type view struct {
@@ -155,6 +157,7 @@ type view struct {
 	Url           *url.URL
 	Id            int64
 	CatSelections http_util.Selections
+	BuildId       string
 }
 
 func (v *view) HasAnchor(idx int) bool {

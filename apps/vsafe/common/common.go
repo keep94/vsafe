@@ -21,7 +21,7 @@ const (
 
 const (
 	// Set to the same thing as kSessionTimeout in vsafe.go
-	kXsrfTimeout = 15 * time.Minute
+	kXsrfTimeout = 60 * time.Minute
 )
 
 var (

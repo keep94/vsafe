@@ -7,7 +7,7 @@ require (
 	github.com/keep94/context v0.1.0
 	github.com/keep94/ramstore v1.0.1
 	github.com/keep94/sessions v0.1.0
-	github.com/keep94/toolbox v0.8.0
+	github.com/keep94/toolbox v0.14.0
 	github.com/keep94/weblogs v1.0.1
 	github.com/mattn/go-sqlite3 v1.14.16
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
