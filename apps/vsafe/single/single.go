@@ -82,7 +82,7 @@ var (
       <tr>
         {{range .}}
           {{if .}}
-            <td><input type="checkbox" name="cat" value="{{.Id}}" {{if index $top.CatMap .Id}}checked{{end}}>{{.Name}}</td>
+            <td><input type="checkbox" name="cat" value="{{.Id}}" {{if $top.IsCategoryChecked .Id}}checked{{end}}>{{.Name}}</td>
           {{else}}
             <td>&nbsp;</td>
           {{end}}
@@ -147,7 +147,7 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
 		return
 	}
 	catRows := toCatRows(categories)
-	catMap, err := toCatMap(r.Form["cat"])
+	catSet, err := toCatSet(r.Form["cat"])
 	if err != nil {
 		http_util.ReportError(w, "Error setting checkboxes", err)
 		return
@@ -162,7 +162,7 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
 		// Do nothing
 	} else {
 		var mutation vsafe.EntryUpdater
-		mutation, err = toEntry(r.Form, catMap)
+		mutation, err = toEntry(r.Form, catSet)
 		if err == nil {
 			if isIdValid(id) {
 				tag, _ := strconv.ParseUint(r.Form.Get("etag"), 10, 64)
@@ -193,7 +193,7 @@ func (h *Handler) doPost(w http.ResponseWriter, r *http.Request, id int64) {
 				isIdValid(id),
 				session.Key().Id,
 				catRows,
-				catMap,
+				catSet,
 				common.NewXsrfToken(r, kSingle),
 				err))
 	} else {
@@ -221,7 +221,7 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
 			http_util.ReportError(w, "Error reading database.", err)
 			return
 		}
-		catMap, err := entryWithEtag.Categories.Map()
+		catSet, err := entryWithEtag.Categories.Set()
 		if err != nil {
 			fmt.Fprintln(w, "Category data for entry corrupt.")
 			return
@@ -234,7 +234,7 @@ func (h *Handler) doGet(w http.ResponseWriter, r *http.Request, id int64) {
 				true,
 				session.Key().Id,
 				catRows,
-				catMap,
+				catSet,
 				common.NewXsrfToken(r, kSingle),
 				nil))
 	} else {
@@ -266,8 +266,8 @@ func withId(url *url.URL, id int64) *url.URL {
 	return &result
 }
 
-func toEntry(values url.Values, catMap map[int64]bool) (mutation vsafe.EntryUpdater, err error) {
-	if len(catMap) > kMaxCategories {
+func toEntry(values url.Values, catSet map[int64]struct{}) (mutation vsafe.EntryUpdater, err error) {
+	if len(catSet) > kMaxCategories {
 		err = kErrTooManyCategories
 		return
 	}
@@ -284,7 +284,7 @@ func toEntry(values url.Values, catMap map[int64]bool) (mutation vsafe.EntryUpda
 	uName := values.Get("uname")
 	password := values.Get("password")
 	special := values.Get("special")
-	categories := idset.New(catMap)
+	categories := idset.NewSet(catSet)
 	mutation = func(entryPtr *vsafe.Entry) bool {
 
 		// We have to skip if nothing changed. Otherwise the etag will change
@@ -361,14 +361,14 @@ func goBack(w http.ResponseWriter, r *http.Request, id int64) {
 	http_util.Redirect(w, r, withId(u, id).String())
 }
 
-func toCatMap(cats []string) (map[int64]bool, error) {
-	result := make(map[int64]bool, len(cats))
+func toCatSet(cats []string) (map[int64]struct{}, error) {
+	result := make(map[int64]struct{}, len(cats))
 	for _, cat := range cats {
 		catId, err := strconv.ParseInt(cat, 10, 64)
 		if err != nil {
-			return map[int64]bool{}, err
+			return nil, err
 		}
-		result[catId] = true
+		result[catId] = struct{}{}
 	}
 	return result, nil
 }
@@ -399,7 +399,7 @@ type view struct {
 	KeyId         int64
 	Xsrf          string
 	CatRows       [][]*vsafe.Category
-	CatMap        map[int64]bool
+	CatSet        map[int64]struct{}
 }
 
 func newView(
@@ -407,7 +407,7 @@ func newView(
 	existingEntry bool,
 	keyId int64,
 	catRows [][]*vsafe.Category,
-	catMap map[int64]bool,
+	catSet map[int64]struct{},
 	xsrf string,
 	err error) *view {
 	return &view{
@@ -415,9 +415,14 @@ func newView(
 		ExistingEntry: existingEntry,
 		KeyId:         keyId,
 		CatRows:       catRows,
-		CatMap:        catMap,
+		CatSet:        catSet,
 		Xsrf:          xsrf,
 		Error:         err}
+}
+
+func (v *view) IsCategoryChecked(catId int64) bool {
+	_, ok := v.CatSet[catId]
+	return ok
 }
 
 func isIdValid(id int64) bool {
