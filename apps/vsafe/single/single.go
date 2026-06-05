@@ -353,7 +353,8 @@ func safeUrlString(u *url.URL) string {
 
 func goBack(w http.ResponseWriter, r *http.Request, id int64) {
 	var u *url.URL
-	u, err := url.Parse(r.Form.Get("prev"))
+	prev := http_util.Sanitize(r.Form.Get("prev"), "/vsafe/home")
+	u, err := url.Parse(prev)
 	if err != nil {
 		http_util.ReportError(w, "Error parsing prev url", err)
 		return

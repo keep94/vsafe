@@ -86,7 +86,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		session.SetKey(key)
 		session.ID = "" // For added security, force a new session ID
 		session.Save(r, w)
-		http_util.Redirect(w, r, r.Form.Get("prev"))
+		prev := http_util.Sanitize(r.Form.Get("prev"), "/vsafe/home")
+		http_util.Redirect(w, r, prev)
 	}
 }
 
